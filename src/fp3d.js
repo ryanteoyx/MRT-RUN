@@ -42,13 +42,27 @@ export function initFP(container, overlayCanvas) {
         // keep streets and buildings readable; drop POI clutter
         if (layer.type === 'symbol' && !/road|street|water/i.test(layer.id)) map.setLayoutProperty(layer.id, 'visibility', 'none');
         if (layer.type === 'fill-extrusion') {
-          map.setPaintProperty(layer.id, 'fill-extrusion-color', ['match', ['%', ['to-number', ['get', 'render_height'], 10], 6], 0, PASTEL[0], 1, PASTEL[1], 2, PASTEL[2], 3, PASTEL[3], 4, PASTEL[4], PASTEL[5]]);
-          map.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.96);
+          // realistic CBD palette by height: shophouses, HDB/office blocks, glass towers
+          const hgt = ['coalesce', ['to-number', ['get', 'render_height']], ['to-number', ['get', 'height']], 10];
+          map.setPaintProperty(layer.id, 'fill-extrusion-color', [
+            'case',
+            ['<', hgt, 16], ['match', ['%', ['round', ['*', hgt, 7]], 5], 0, '#e8c9a6', 1, '#d9a98a', 2, '#efe0bf', 3, '#c9b59a', '#e2cfb4'],
+            ['<', hgt, 60], ['match', ['%', ['round', hgt], 4], 0, '#e7e2d6', 1, '#d8d4cb', 2, '#cfd6dc', '#ece6da'],
+            ['match', ['%', ['round', hgt], 3], 0, '#8fa7bd', 1, '#a9bccd', '#7f97ad'],
+          ]);
+          map.setPaintProperty(layer.id, 'fill-extrusion-opacity', 1);
+          try { map.setPaintProperty(layer.id, 'fill-extrusion-vertical-gradient', true); } catch {}
         }
-        if (layer.type === 'background') map.setPaintProperty(layer.id, 'background-color', '#e9e2d0');
+        if (layer.type === 'fill' && /park|grass|wood|landcover|landuse/i.test(layer.id)) {
+          try { map.setPaintProperty(layer.id, 'fill-color', '#a9cf8f'); } catch {}
+        }
+        if (layer.type === 'fill' && /water/i.test(layer.id)) {
+          try { map.setPaintProperty(layer.id, 'fill-color', '#7fb8cf'); } catch {}
+        }
+        if (layer.type === 'background') map.setPaintProperty(layer.id, 'background-color', '#d6d2c8');
       }
       if (map.setSky) map.setSky({ 'sky-color': '#8ec5e8', 'horizon-color': '#f6d7b8', 'fog-color': '#f3e3cf', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.3 });
-      if (map.setLight) map.setLight({ anchor: 'viewport', color: '#fff4e0', intensity: 0.35, position: [1.4, 210, 40] });
+      if (map.setLight) map.setLight({ anchor: 'map', color: '#fff1d6', intensity: 0.5, position: [1.5, 230, 35] });
       // the walking route as a glowing line on the pavement
     } catch {}
   });

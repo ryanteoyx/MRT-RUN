@@ -435,3 +435,27 @@ body.racing #map, .wave-box, .hud, .dir-box, .cam-card, .prompt, .toast, .obstac
 #fp3d .maplibregl-ctrl-attrib { font-size: 10px; opacity: 0.75; }
 .prompt { position: fixed; top: 205px; left: 50%; transform: translateX(-50%); background: rgba(11,15,20,0.9); color: #fff; border: 2px solid var(--pc, #2ee6a6); border-radius: 999px; padding: 10px 20px; font-family: 'Barlow Condensed', Inter; font-weight: 800; font-size: 26px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 0 30px color-mix(in srgb, var(--pc, #2ee6a6) 40%, transparent); }
 .toast { top: 265px; }
+
+/* ---------- control picker + keyboard art ---------- */
+.ctrl-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ctrl-btn { background: #0f141b; color: #c9d4e3; border: 2px solid #232c38; border-radius: 12px; padding: 10px; font-weight: 800; }
+.ctrl-btn.on { border-color: #2ee6a6; color: #fff; background: rgba(46,230,166,0.08); }
+.keys-art { display: grid; grid-template-columns: auto auto auto; align-items: center; justify-items: center; gap: 10px 12px; margin-bottom: 10px; }
+.keys-art .k { min-width: 46px; height: 46px; display: grid; place-items: center; background: #f4f6fa; color: #0B0F14; border-radius: 10px; font-weight: 800; font-size: 18px; box-shadow: 0 4px 0 #9aa3ad; }
+.keys-art .k.wide { grid-column: span 2; width: 170px; }
+.keys-art .kl { color: #c9d4e3; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; }
+.meter.big { width: 80%; height: 14px; margin-top: 8px; }
+.meter.big div { height: 100%; width: 0; background: linear-gradient(90deg, #2ee6a6, #ffb020, #ff3b6b); transition: width 0.08s; }
+body.keys.racing .cam-card { display: none !important; }
+/* phone layout */
+@media (max-width: 700px) {
+  .hud { left: 8px; right: 8px; top: 8px; padding: 8px 12px; }
+  .timer { font-size: 40px !important; }
+  .hud-left .hud-next { font-size: 14px; }
+  body.racing .cam-card { width: 110px !important; top: auto; bottom: 8px; left: 8px; }
+  body.racing #map { width: 150px; height: 130px; right: 8px; bottom: 8px; }
+  .wave-box { display: none !important; }
+  .dir-box, body.racing .dir-box { top: 92px; transform: translateX(-50%) scale(0.85); }
+  .prompt { top: 150px; font-size: 18px; white-space: normal; text-align: center; width: 90vw; }
+  .toast { top: 200px; font-size: 14px; }
+}

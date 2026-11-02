@@ -124,6 +124,69 @@ function fakeEngine() {
   return e;
 }
 
+// ---------- controls: laptop = keyboard/trackpad steering, phone = wave at camera ----------
+const IS_MOBILE = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820;
+let controls = localStorage.getItem('mrtrun_controls') || (IS_MOBILE ? 'camera' : 'keys');
+const KEYS = () => controls === 'keys';
+const T = {
+  run: () => (KEYS() ? 'Tap SPACE to run' : 'Wave to run'),
+  turn: (dir) => (KEYS() ? `steer ${dir < 0 ? '← left' : 'right →'}` : `wave on your ${dir < 0 ? 'left' : 'right'}`),
+  jump: () => (KEYS() ? 'Press ↑ to jump' : 'Hands up to jump'),
+  tap: () => (KEYS() ? 'Press ENTER to tap' : 'wave inside the yellow box'),
+  hard: () => (KEYS() ? 'Tap SPACE fast!' : 'Wave hard!'),
+  freeze: () => (KEYS() ? 'Stop tapping!' : 'Freeze!'),
+};
+function keyEngine() {
+  const e = { kind: 'keys', motion: 0, zones: { left: 0, right: 0, top: 0, tap: 0 }, lateral: 0, shrink: null, showZones: false, noise: 1 };
+  const taps = [];
+  let keyL = false, keyR = false, pointer = 0, pointerAt = 0, jumpUntil = 0, tapUntil = 0, iv = null;
+  const down = (ev) => {
+    const now = performance.now();
+    if (ev.code === 'Space') { if (!ev.repeat) taps.push(now); if (phase === 'race' || phase === 'countdown') ev.preventDefault(); }
+    if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') keyL = true;
+    if (ev.code === 'ArrowRight' || ev.code === 'KeyD') keyR = true;
+    if (ev.code === 'ArrowUp' || ev.code === 'KeyW') jumpUntil = now + 700;
+    if (ev.code === 'Enter' && phase === 'race') { tapUntil = now + 700; ev.preventDefault(); }
+  };
+  const up = (ev) => {
+    if (ev.code === 'ArrowLeft' || ev.code === 'KeyA') keyL = false;
+    if (ev.code === 'ArrowRight' || ev.code === 'KeyD') keyR = false;
+  };
+  const move = (ev) => { pointer = (ev.clientX / innerWidth) * 2 - 1; pointerAt = performance.now(); };
+  e.start = async () => {
+    addEventListener('keydown', down);
+    addEventListener('keyup', up);
+    addEventListener('pointermove', move);
+    iv = setInterval(() => {
+      const now = performance.now();
+      while (taps.length && now - taps[0] > 1000) taps.shift();
+      const target = Math.min(100, (taps.length / 7) * 100); // 7 taps per second = flat out
+      e.motion += (target - e.motion) * 0.35;
+      const lat = keyL !== keyR ? (keyL ? -1 : 1) : now - pointerAt < 2500 ? Math.max(-1, Math.min(1, pointer * 1.3)) : 0;
+      e.lateral += (lat - e.lateral) * 0.35;
+      e.zones.top = now < jumpUntil ? 100 : 0;
+      e.zones.tap = now < tapUntil ? 100 : 0;
+      const m = $('meterFill');
+      if (m) m.style.width = `${e.motion}%`;
+    }, 50);
+    return false;
+  };
+  e.calibrate = async () => sleep(1200);
+  e.stop = () => { removeEventListener('keydown', down); removeEventListener('keyup', up); removeEventListener('pointermove', move); clearInterval(iv); };
+  return e;
+}
+function newEngine() {
+  if (DEMO) return fakeEngine();
+  return KEYS() ? keyEngine() : new MotionEngine($('video'), $('overlay'));
+}
+function setControls(c) {
+  if (c === controls && engine) return;
+  controls = c;
+  localStorage.setItem('mrtrun_controls', c);
+  if (engine) { try { engine.stop(); } catch {} engine = null; }
+  enterSetup();
+}
+
 // ---------- step navigation ----------
 let mode = 'solo';
 function go(step) {
@@ -141,6 +204,7 @@ $('join').addEventListener('click', (e) => {
   }
   go(g);
 });
+document.querySelectorAll('.ctrl-btn').forEach((b) => (b.onclick = () => setControls(b.dataset.ctrl)));
 $('setupBack').onclick = () => go(mode === 'solo' ? 'route' : 'start');
 
 async function enterSetup() {
@@ -151,9 +215,19 @@ async function enterSetup() {
     : 'Get ready · Battle';
   $('startBtn').innerHTML = solo ? 'Tap in &amp; run <span>→</span>' : 'Join battle <span>→</span>';
   $('joinMsg').textContent = '';
-  // start the camera now so players can frame themselves before the run
+  document.querySelectorAll('.ctrl-btn').forEach((b) => b.classList.toggle('on', b.dataset.ctrl === controls));
+  document.body.classList.toggle('keys', KEYS());
+  document.querySelector('.wave-head span').innerHTML = `<i class="k1"></i>${KEYS() ? 'Tap rate' : 'Wave'}`;
+  $('checks').innerHTML = KEYS()
+    ? '<li><b>Tap SPACE to run</b><small>Faster taps = faster run</small></li><li><b>Steer with ← → or the trackpad</b><small>Turn at junctions, dodge people</small></li><li><b>↑ jump · ENTER tap card</b><small>Barriers and the gantry</small></li>'
+    : '<li><b>Hands up ✋</b><small>Keep both hands in the picture</small></li><li><b>Wave faster = run faster</b><small>Wave on one side to steer</small></li><li><b>Try it now</b><small>Green boxes show your hands moving</small></li>';
+  if (KEYS()) {
+    $('camPh').style.display = '';
+    $('camPh').innerHTML = '<div class="keys-art"><span class="k wide">SPACE</span><span class="kl">run</span><span class="k">←</span><span class="k">→</span><span class="kl">steer</span><span class="k">↑</span><span></span><span class="kl">jump</span><span class="k">⏎</span><span></span><span class="kl">tap card</span></div><small>Try tapping SPACE now</small><div class="meter big"><div id="keyMeter"></div></div>';
+    show('camCard', false);
+  }
   if (!engine) {
-    engine = DEMO ? fakeEngine() : new MotionEngine($('video'), $('overlay'));
+    engine = newEngine();
     try {
       const cv = await engine.start();
       $('engineTag').textContent = cv ? 'OpenCV.js' : 'Canvas fallback';
@@ -163,6 +237,10 @@ async function enterSetup() {
       $('camPh').innerHTML = '<span>🚫</span>Camera blocked. Allow it in the address bar, then press Back and Next.';
       return;
     }
+  }
+  if (KEYS()) {
+    const km = setInterval(() => { const el = $('keyMeter'); if (!el || phase !== 'join') return clearInterval(km); el.style.width = `${engine?.motion || 0}%`; }, 60);
+    return;
   }
   document.body.classList.add('setup');
   document.querySelector('.cam-slot').appendChild($('camCard'));
@@ -265,8 +343,8 @@ async function beginInner(battleStartAt) {
   setHud(tier);
 
   if (!engine) {
-    engine = DEMO ? fakeEngine() : new MotionEngine($('video'), $('overlay'));
-    center('Starting camera…');
+    engine = newEngine();
+    center('Starting…');
     try {
       const cv = await engine.start();
       $('engineTag').textContent = cv ? 'OpenCV.js' : 'Canvas fallback';
@@ -290,7 +368,7 @@ async function beginInner(battleStartAt) {
   setMsg(`<small>Arriving</small><b>${tier.from.name}</b><span>Hold still…</span>`);
   announce(`Next station, ${tier.from.name}. Transfer to the ${tier.to.lines.map((l) => l.name).join(' and ')} line at ${tier.to.name}. Your train leaves in ${tier.limitSec} seconds.`);
   await engine.calibrate(2600);
-  setMsg(`<small>Doors opening</small><b>Wave to run</b><span>${tier.to.name} · ${tier.limitSec}s</span>`);
+  setMsg(`<small>Doors opening</small><b>${T.run()}</b><span>${tier.to.name} · ${tier.limitSec}s</span>`);
 
   phase = 'countdown';
   const startAt = battleStartAt || Date.now() + 3500;
@@ -366,7 +444,7 @@ function prompt(html, color) {
 function updateItems(r, t, m, now, dt) {
   const z = engine ? engine.zones : { top: 0, tap: 0 };
   // lane follows which side you wave on
-  const targetLane = m > 12 ? Math.max(-1, Math.min(1, (engine?.lateral || 0) * 1.6)) : r.lane * 0.98;
+  const targetLane = (engine?.kind === 'keys' || m > 12) ? Math.max(-1, Math.min(1, (engine?.lateral || 0) * 1.6)) : r.lane * 0.98;
   r.lane += (targetLane - r.lane) * Math.min(1, dt * 3);
   let factor = 1;
   let shown = false;
@@ -377,7 +455,7 @@ function updateItems(r, t, m, now, dt) {
     if (it.kind === 'junction') {
       if (ahead < 28 && ahead > 0) {
         if (Math.sign(r.lane) === it.dir && Math.abs(r.lane) > 0.35) it.ok = (it.ok || 0) + dt;
-        if (!shown) prompt(`${it.dir < 0 ? '⬅' : '➡'} Turn ${it.dir < 0 ? 'LEFT' : 'RIGHT'} · wave on your ${it.dir < 0 ? 'left' : 'right'}`, (it.ok || 0) > 0.4 ? '#2ee6a6' : '#ffd23f');
+        if (!shown) prompt(`${it.dir < 0 ? '⬅' : '➡'} Turn ${it.dir < 0 ? 'LEFT' : 'RIGHT'} · ${T.turn(it.dir)}`, (it.ok || 0) > 0.4 ? '#2ee6a6' : '#ffd23f');
         shown = true;
       }
       if (ahead <= 0) {
@@ -388,7 +466,7 @@ function updateItems(r, t, m, now, dt) {
     } else if (it.kind === 'barrier') {
       if (ahead < 14 && ahead > 0) {
         if (z.top > 30) it.jumped = true;
-        if (!shown) prompt(it.jumped ? '✔ Ready to jump' : '🙌 Barrier! Hands up to jump', it.jumped ? '#2ee6a6' : '#ffd23f');
+        if (!shown) prompt(it.jumped ? '✔ Ready to jump' : `🙌 Barrier! ${T.jump()}`, it.jumped ? '#2ee6a6' : '#ffd23f');
         shown = true;
       }
       if (ahead <= 0) {
@@ -407,7 +485,7 @@ function updateItems(r, t, m, now, dt) {
       if (!r.gate) { r.gate = { t: 0, tap: 0 }; sfx.alarm(); }
       r.gate.t += dt;
       if (z.tap > 30) r.gate.tap += dt;
-      prompt('💳 Tap your EZ-Link · wave inside the yellow box', '#ffd23f');
+      prompt(`💳 Tap your EZ-Link · ${T.tap()}`, '#ffd23f');
       shown = true;
       factor = 0;
       if (r.gate.tap > 0.5 || r.gate.t > 5) {
@@ -561,7 +639,7 @@ function startObstacle(o) {
   race.active = { ...o, ref: o, t: 0, progress: 0 };
   const def = OBSTACLES[o.type];
   $('obTitle').textContent = def.title;
-  $('obSub').textContent = def.sub;
+  $('obSub').textContent = o.type === 'escalator' ? T.hard() : o.type === 'redman' ? T.freeze() : def.sub;
   $('obstacle').style.setProperty('--oc', def.color);
   $('obFill').style.width = '0%';
   show('obstacle', true);
