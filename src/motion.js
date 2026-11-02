@@ -179,6 +179,7 @@ export class MotionEngine {
           if (Math.abs(g[j] - this.prevGray[j]) > 25) mask[j] = 255;
         }
         changed = this.shrink ? this.countInBox(mask) : mask.reduce((a, v) => a + (v ? 1 : 0), 0);
+        changed *= 1.35; // no dilate here: match the OpenCV path's reading
         this.boxes = [];
       }
       this.prevGray = g;
@@ -189,8 +190,9 @@ export class MotionEngine {
     this.shake = !this.shrink && frac > 85;
     // smooth raw
     this.raw = this.raw * 0.5 + frac * 0.5;
-    // calibrated 0..100: subtract noise, scale so ~30% changed pixels = 100
-    const m = Math.max(0, this.raw - this.noise * 1.3) * (100 / 30);
+    // calibrated 0..100: subtract noise + small deadzone, ~16% changed = 100
+    // (tuned on fake webcam clips: still <5, arm wave ~55, full thrash 100)
+    const m = Math.max(0, this.raw - this.noise * 1.3 - 0.8) * (100 / 15);
     this.motion = this.shake ? 0 : Math.min(100, m);
     this.drawOverlay();
   }
