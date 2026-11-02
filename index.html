@@ -13,16 +13,38 @@
     <canvas id="map"></canvas>
 
     <!-- Join -->
-    <section id="join" class="panel-screen">
-      <div class="join-card">
-        <div class="brand"><span class="logo">MRT RUN</span><span class="sub">Thrash to drive · powered by OpenCV + Supabase Realtime</span></div>
-        <p class="lede">Your train just pulled in. Pick a real CBD transfer, then thrash in front of your webcam to run to the next line before its doors close.</p>
-        <label class="field">Your name<input id="name" maxlength="16" placeholder="e.g. Ryan" autocomplete="off" /></label>
-        <div class="field">Colour<div id="colors" class="colors"></div></div>
-        <div class="field">Pick your transfer<div id="tiers" class="tiers"></div></div>
-        <label class="battle-toggle"><input type="checkbox" id="battleReady" /> Join battles started from the big screen</label>
-        <button id="startBtn" class="btn-primary">Tap in &amp; run</button>
-        <p id="joinMsg" class="hint"></p>
+    <section id="join" class="panel-screen landing">
+      <div class="land">
+        <div class="land-hero">
+          <div class="land-logo">MRT<span>RUN</span></div>
+          <p class="land-tag">Your train just pulled in. <b>Run</b> to the next line before the doors close.</p>
+          <div class="how">
+            <div class="how-item"><span class="hi">🏃</span><b>Thrash</b><small>to run</small></div>
+            <div class="how-item"><span class="hi">🚦</span><b>Freeze</b><small>at the red man</small></div>
+            <div class="how-item"><span class="hi">🚪</span><b>Beat</b><small>the doors</small></div>
+          </div>
+          <p class="land-foot">Webcam motion by OpenCV · live leaderboard by Supabase Realtime</p>
+        </div>
+
+        <div class="land-panel">
+          <div class="step"><span class="num">1</span>Pick a mode</div>
+          <div class="modes">
+            <label class="mode"><input type="radio" name="mode" id="soloMode" checked /><span><b>Solo run</b><small>Play now, beat the leaderboard</small></span></label>
+            <label class="mode"><input type="radio" name="mode" id="battleReady" /><span><b>Battle</b><small>Wait for the big screen to start everyone</small></span></label>
+          </div>
+
+          <div class="step"><span class="num">2</span>Pick your transfer</div>
+          <div id="tiers" class="routes"></div>
+
+          <div class="step"><span class="num">3</span>Who's running?</div>
+          <div class="who">
+            <input id="name" maxlength="16" placeholder="Your name" autocomplete="off" />
+            <div id="colors" class="colors"></div>
+          </div>
+
+          <button id="startBtn" class="btn-play">Tap in &amp; run <span>→</span></button>
+          <p id="joinMsg" class="hint"></p>
+        </div>
       </div>
     </section>
 

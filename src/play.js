@@ -64,27 +64,49 @@ async function renderTiers(withRecords = false) {
       const lb = withRecords ? await leaderboard(t.id, { limit: 1 }).catch(() => []) : [];
       const best = lb[0] ? `${fmt(lb[0].time_ms)} by ${esc(lb[0].player_name)}` : 'No runs yet';
       const badges = (st) => st.codes.map((c, i) => `<i class="lb" style="background:${st.lines[i]?.color || st.lines[0].color}">${c}</i>`).join('');
-      return `<button class="tier ${t.id === tierId ? 'on' : ''}" data-t="${t.id}" style="--lc:${t.color}">
-        <span class="tier-diff">${t.label} · ${t.name}</span>
-        <span class="tier-leg"><span class="st">${badges(t.from)}<b>${t.from.name}</b></span><span class="walk">🚶 ${Math.round(t.length)} m</span><span class="st">${badges(t.to)}<b>${t.to.name}</b></span></span>
-        <span class="tier-meta">${t.blurb}</span>
-        <span class="depart">Doors close in <b>${t.limitSec}s</b><small>real walk ≈ ${Math.round(t.walkSec / 60)} min</small></span>
-        <span class="tier-best">Record: ${best}</span>
+      return `<button class="route ${t.id === tierId ? 'on' : ''}" data-t="${t.id}" style="--lc:${t.color}">
+        <span class="r-diff r-${t.id}">${t.label}</span>
+        <span class="r-main">
+          <span class="r-chain">${badges(t.from)}<span class="r-walk">🚶 ${Math.round(t.length)} m</span>${badges(t.to)}</span>
+          <span class="r-names">${t.from.name} → ${t.to.name}</span>
+          <span class="r-best">${best === 'No runs yet' ? 'No record yet — be first' : 'Record ' + best}</span>
+        </span>
+        <span class="r-time"><b>${t.limitSec}s</b><small>doors close</small></span>
       </button>`;
     })
   );
   $('tiers').innerHTML = cards.join('');
 }
 $('tiers').onclick = (e) => {
-  const b = e.target.closest('.tier');
+  const b = e.target.closest('.route');
   if (!b) return;
   tierId = b.dataset.t;
-  document.querySelectorAll('.tier').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.route').forEach((x) => x.classList.toggle('on', x === b));
 };
 renderTiers();
 if (!online) $('joinMsg').textContent = 'Offline mode: leaderboard is saved on this browser only.';
 
-$('startBtn').onclick = () => begin();
+$('startBtn').onclick = () => {
+  if (!$('battleReady').checked) return begin();
+  myName = $('name').value.trim().slice(0, 16);
+  if (!myName) {
+    $('joinMsg').textContent = 'Enter a name first.';
+    return $('name').focus();
+  }
+  localStorage.setItem('mrtrun_name', myName);
+  localStorage.setItem('mrtrun_color', myColor);
+  initAudio();
+  connectLobby();
+  lobby.track?.({ id: myId, name: myName, color: myColor, tier: tierId, ready: true });
+  $('startBtn').innerHTML = 'Ready · waiting for the big screen…';
+  $('joinMsg').textContent = 'Stay on this page. Your run starts when the host presses Start Battle.';
+};
+for (const id of ['soloMode', 'battleReady']) {
+  $(id).onchange = () => {
+    $('startBtn').innerHTML = $('battleReady').checked ? 'Join battle <span>→</span>' : 'Tap in &amp; run <span>→</span>';
+    $('joinMsg').textContent = '';
+  };
+}
 $('againBtn').onclick = () => begin();
 $('menuBtn').onclick = () => {
   show('finish', false);
