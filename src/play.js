@@ -9,11 +9,11 @@ const $ = (id) => document.getElementById(id);
 const COLORS = ['#ff3b6b', '#ffb020', '#2ee6a6', '#38b6ff', '#a66bff', '#ff7ad9', '#f4f6fa'];
 
 // ---------- identity ----------
-const myId = localStorage.getItem('thrash_id') || crypto.randomUUID();
-localStorage.setItem('thrash_id', myId);
-let myName = localStorage.getItem('thrash_name') || '';
-let myColor = localStorage.getItem('thrash_color') || COLORS[0];
-let tierId = localStorage.getItem('thrash_tier') || 'easy';
+const myId = localStorage.getItem('mrtrun_id') || crypto.randomUUID();
+localStorage.setItem('mrtrun_id', myId);
+let myName = localStorage.getItem('mrtrun_name') || '';
+let myColor = localStorage.getItem('mrtrun_color') || COLORS[0];
+let tierId = localStorage.getItem('mrtrun_tier') || 'easy';
 
 // ---------- config ----------
 const COMBO_ON = 40;
@@ -116,9 +116,9 @@ async function begin(battleStartAt) {
     $('name').focus();
     return;
   }
-  localStorage.setItem('thrash_name', myName);
-  localStorage.setItem('thrash_color', myColor);
-  localStorage.setItem('thrash_tier', tierId);
+  localStorage.setItem('mrtrun_name', myName);
+  localStorage.setItem('mrtrun_color', myColor);
+  localStorage.setItem('mrtrun_tier', tierId);
   initAudio();
   connectLobby();
   lobby.track?.({ id: myId, name: myName, color: myColor, tier: tierId });
@@ -390,7 +390,7 @@ async function finish() {
 
   const prevGhost = r.ghost;
   const pb = !prevGhost || ms < prevGhost.ms;
-  if (pb) localStorage.setItem(`thrash_ghost_${tierId}`, JSON.stringify({ ms, trace: r.trace }));
+  if (pb) localStorage.setItem(`mrtrun_ghost_${tierId}`, JSON.stringify({ ms, trace: r.trace }));
 
   await saveRun({
     player_id: myId, player_name: myName, color: myColor, tier: tierId,
@@ -450,7 +450,7 @@ function toast(html, color = '#fff', ms = 1800) {
 }
 function loadGhost(t) {
   try {
-    return JSON.parse(localStorage.getItem(`thrash_ghost_${t}`));
+    return JSON.parse(localStorage.getItem(`mrtrun_ghost_${t}`));
   } catch {
     return null;
   }

@@ -11,7 +11,7 @@ export const supabase = online
   ? createClient(URL, KEY, { realtime: { params: { eventsPerSecond: 20 } } })
   : null;
 
-const LS_KEY = 'thrash_runs_v1';
+const LS_KEY = 'mrtrun_runs_v1';
 
 // ---------- Lobby channel ----------
 // events: tick {id,name,color,tier,progress,station,speed,charges}
@@ -36,7 +36,7 @@ export function joinLobby({ presence, onEvent, onPresence }) {
       leave: () => supabase.removeChannel(ch),
     };
   }
-  const bc = new BroadcastChannel('thrash_lobby');
+  const bc = new BroadcastChannel('mrtrun_lobby');
   bc.onmessage = (e) => onEvent?.(e.data.event, e.data.payload);
   return {
     send: (event, payload) => bc.postMessage({ event, payload }),
@@ -55,7 +55,7 @@ export async function saveRun(run) {
   const all = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
   all.push({ ...run, created_at: new Date().toISOString() });
   localStorage.setItem(LS_KEY, JSON.stringify(all));
-  new BroadcastChannel('thrash_runs').postMessage('new');
+  new BroadcastChannel('mrtrun_runs').postMessage('new');
 }
 
 // Best time per player name for a tier (optionally today only).
@@ -106,7 +106,7 @@ export function onNewRun(cb) {
       .subscribe();
     return () => supabase.removeChannel(ch);
   }
-  const bc = new BroadcastChannel('thrash_runs');
+  const bc = new BroadcastChannel('mrtrun_runs');
   bc.onmessage = () => cb(null);
   return () => bc.close();
 }

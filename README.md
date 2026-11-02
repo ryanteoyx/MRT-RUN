@@ -1,4 +1,4 @@
-# Thrash Royale · MRT Sprint
+# MRT RUN
 
 Thrash in front of your webcam to drive a train along real Singapore MRT routes. OpenCV.js measures your motion in the browser; Supabase Realtime streams everyone's race to a live big-screen leaderboard.
 
