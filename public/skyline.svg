@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6fa8d6"/>
+      <stop offset="0.45" stop-color="#b9cfe6"/>
+      <stop offset="0.75" stop-color="#f6cfa8"/>
+      <stop offset="1" stop-color="#f4a77f"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff6d8"/>
+      <stop offset="0.5" stop-color="#ffe2a8" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#ffd08a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2b991"/>
+      <stop offset="0.4" stop-color="#8fb3c9"/>
+      <stop offset="1" stop-color="#3f6f8a"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9fb8cc"/>
+      <stop offset="1" stop-color="#6f8ca6"/>
+    </linearGradient>
+    <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a9bfd6"/>
+      <stop offset="1" stop-color="#c6cfdc"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="4"/></filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1180" cy="430" r="260" fill="url(#sun)"/>
+  <circle cx="1180" cy="430" r="70" fill="#fff4d6"/>
+
+  <!-- clouds -->
+  <g fill="#fffaf2" opacity="0.95" filter="url(#soft)">
+    <ellipse cx="260" cy="170" rx="170" ry="60"/><ellipse cx="360" cy="140" rx="120" ry="70"/><ellipse cx="180" cy="150" rx="90" ry="50"/>
+    <ellipse cx="900" cy="120" rx="200" ry="55"/><ellipse cx="1000" cy="95" rx="120" ry="60"/><ellipse cx="820" cy="105" rx="90" ry="45"/>
+    <ellipse cx="1420" cy="210" rx="150" ry="50"/><ellipse cx="1500" cy="185" rx="100" ry="55"/>
+  </g>
+  <g fill="#ffe9d6" opacity="0.6">
+    <ellipse cx="300" cy="195" rx="160" ry="22"/><ellipse cx="930" cy="150" rx="190" ry="20"/><ellipse cx="1440" cy="235" rx="140" ry="18"/>
+  </g>
+
+  <!-- far city haze -->
+  <g fill="url(#far)" opacity="0.85">
+    <rect x="40" y="430" width="60" height="140"/><rect x="110" y="400" width="50" height="170"/><rect x="170" y="450" width="70" height="120"/>
+    <rect x="1350" y="420" width="55" height="150"/><rect x="1410" y="450" width="70" height="120"/><rect x="1490" y="410" width="60" height="160"/>
+  </g>
+
+  <!-- CBD towers (Raffles Place cluster) -->
+  <g>
+    <rect x="300" y="300" width="70" height="270" fill="url(#glass)"/>
+    <rect x="380" y="250" width="80" height="320" fill="#86a3bb"/>
+    <polygon points="380,250 420,215 460,250" fill="#86a3bb"/>
+    <rect x="470" y="330" width="60" height="240" fill="#a7bccd"/>
+    <rect x="540" y="280" width="75" height="290" fill="url(#glass)"/>
+    <rect x="625" y="360" width="55" height="210" fill="#9db4c6"/>
+    <g fill="#ffffff" opacity="0.28">
+      <rect x="306" y="310" width="58" height="3"/><rect x="306" y="340" width="58" height="3"/><rect x="306" y="370" width="58" height="3"/><rect x="306" y="400" width="58" height="3"/><rect x="306" y="430" width="58" height="3"/>
+      <rect x="386" y="270" width="68" height="3"/><rect x="386" y="300" width="68" height="3"/><rect x="386" y="330" width="68" height="3"/><rect x="386" y="360" width="68" height="3"/><rect x="386" y="390" width="68" height="3"/>
+      <rect x="546" y="300" width="63" height="3"/><rect x="546" y="330" width="63" height="3"/><rect x="546" y="360" width="63" height="3"/><rect x="546" y="390" width="63" height="3"/>
+    </g>
+  </g>
+
+  <!-- Marina Bay Sands -->
+  <g>
+    <polygon points="820,560 840,330 880,330 870,560" fill="#cfd6de"/>
+    <polygon points="900,560 915,330 955,330 950,560" fill="#c4ccd6"/>
+    <polygon points="980,560 990,330 1030,330 1030,560" fill="#cfd6de"/>
+    <g fill="#9eaab8" opacity="0.5">
+      <rect x="845" y="350" width="30" height="2"/><rect x="845" y="380" width="30" height="2"/><rect x="845" y="410" width="28" height="2"/><rect x="845" y="440" width="27" height="2"/>
+      <rect x="920" y="350" width="32" height="2"/><rect x="920" y="380" width="32" height="2"/><rect x="920" y="410" width="31" height="2"/><rect x="920" y="440" width="31" height="2"/>
+      <rect x="995" y="350" width="32" height="2"/><rect x="995" y="380" width="32" height="2"/><rect x="995" y="410" width="33" height="2"/><rect x="995" y="440" width="33" height="2"/>
+    </g>
+    <path d="M800 322 Q 820 306 860 310 L 1060 312 Q 1075 314 1078 322 Z" fill="#e9edf1"/>
+    <rect x="800" y="320" width="278" height="8" rx="4" fill="#b8c2cc"/>
+    <g fill="#5f9e5a"><circle cx="840" cy="314" r="5"/><circle cx="900" cy="313" r="4"/><circle cx="960" cy="313" r="5"/><circle cx="1020" cy="314" r="4"/></g>
+  </g>
+
+  <!-- Gardens by the Bay Supertrees -->
+  <g>
+    <g stroke="#7a6a8a" stroke-width="8" stroke-linecap="round"><line x1="1120" y1="560" x2="1120" y2="420"/><line x1="1175" y1="560" x2="1175" y2="380"/><line x1="1230" y1="560" x2="1230" y2="440"/><line x1="1275" y1="560" x2="1275" y2="460"/></g>
+    <g fill="#8d6ea8"><path d="M1090 420 Q1120 395 1150 420 Q1120 432 1090 420Z"/><path d="M1140 380 Q1175 350 1210 380 Q1175 394 1140 380Z"/><path d="M1200 440 Q1230 418 1260 440 Q1230 452 1200 440Z"/><path d="M1250 460 Q1275 442 1300 460 Q1275 470 1250 460Z"/></g>
+    <g fill="#ffd6f4" filter="url(#glow)" opacity="0.9"><circle cx="1120" cy="418" r="8"/><circle cx="1175" cy="378" r="10"/><circle cx="1230" cy="438" r="7"/></g>
+    <g fill="#5f9e5a"><ellipse cx="1120" cy="470" rx="10" ry="30"/><ellipse cx="1175" cy="450" rx="12" ry="40"/><ellipse cx="1230" cy="490" rx="9" ry="28"/><ellipse cx="1275" cy="500" rx="8" ry="24"/></g>
+  </g>
+
+  <!-- HDB blocks -->
+  <g>
+    <rect x="1330" y="440" width="70" height="130" fill="#f3e3c3"/>
+    <rect x="1410" y="410" width="80" height="160" fill="#e7f0d8"/>
+    <rect x="1500" y="455" width="70" height="115" fill="#f7d9cf"/>
+    <g fill="#8aa0b4" opacity="0.6">
+      <rect x="1338" y="452" width="54" height="5"/><rect x="1338" y="470" width="54" height="5"/><rect x="1338" y="488" width="54" height="5"/><rect x="1338" y="506" width="54" height="5"/><rect x="1338" y="524" width="54" height="5"/>
+      <rect x="1418" y="422" width="64" height="5"/><rect x="1418" y="440" width="64" height="5"/><rect x="1418" y="458" width="64" height="5"/><rect x="1418" y="476" width="64" height="5"/><rect x="1418" y="494" width="64" height="5"/><rect x="1418" y="512" width="64" height="5"/>
+      <rect x="1508" y="467" width="54" height="5"/><rect x="1508" y="485" width="54" height="5"/><rect x="1508" y="503" width="54" height="5"/><rect x="1508" y="521" width="54" height="5"/>
+    </g>
+  </g>
+
+  <!-- bay water -->
+  <rect x="0" y="565" width="1600" height="160" fill="url(#water)"/>
+  <g fill="#fff3e0" opacity="0.5">
+    <rect x="1080" y="585" width="200" height="3" rx="1.5"/><rect x="1110" y="605" width="140" height="3" rx="1.5"/><rect x="1140" y="625" width="90" height="3" rx="1.5"/>
+    <rect x="300" y="600" width="120" height="2"/><rect x="820" y="610" width="160" height="2"/>
+  </g>
+  <!-- Merlion -->
+  <g transform="translate(720 520)">
+    <rect x="-6" y="40" width="28" height="12" fill="#d9d4cc"/>
+    <path d="M0 40 Q-4 18 6 8 Q14 0 20 8 Q24 16 18 24 Q22 30 20 40 Z" fill="#f2efe9"/>
+    <path d="M20 12 Q40 10 70 30" stroke="#dff1fb" stroke-width="4" fill="none" opacity="0.9"/>
+  </g>
+
+  <!-- MRT viaduct + train -->
+  <g>
+    <rect x="0" y="700" width="1600" height="16" fill="#cbd2d9"/>
+    <g fill="#b3bcc5"><rect x="120" y="716" width="22" height="80"/><rect x="520" y="716" width="22" height="80"/><rect x="920" y="716" width="22" height="80"/><rect x="1320" y="716" width="22" height="80"/></g>
+    <g transform="translate(380 664)">
+      <rect x="0" y="0" width="760" height="38" rx="16" fill="#f7f8fa"/>
+      <rect x="0" y="24" width="760" height="5" fill="#D42E12"/>
+      <rect x="0" y="29" width="760" height="4" fill="#009645"/>
+      <g fill="#33414f"><rect x="40" y="8" width="44" height="12" rx="3"/><rect x="110" y="8" width="44" height="12" rx="3"/><rect x="180" y="8" width="44" height="12" rx="3"/><rect x="290" y="8" width="44" height="12" rx="3"/><rect x="360" y="8" width="44" height="12" rx="3"/><rect x="430" y="8" width="44" height="12" rx="3"/><rect x="540" y="8" width="44" height="12" rx="3"/><rect x="610" y="8" width="44" height="12" rx="3"/><rect x="680" y="8" width="44" height="12" rx="3"/></g>
+    </g>
+  </g>
+
+  <!-- foreground shophouses -->
+  <g>
+    <rect x="0" y="760" width="1600" height="140" fill="#d9cfb8"/>
+    <g>
+      <rect x="20" y="730" width="120" height="170" fill="#bfe3d0"/><rect x="140" y="720" width="120" height="180" fill="#f7e3a1"/><rect x="260" y="735" width="120" height="165" fill="#f4c7a1"/><rect x="380" y="725" width="120" height="175" fill="#b9d7f0"/>
+      <rect x="1100" y="730" width="120" height="170" fill="#f2b5b5"/><rect x="1220" y="720" width="120" height="180" fill="#d9c8f0"/><rect x="1340" y="735" width="120" height="165" fill="#c8e6a0"/><rect x="1460" y="725" width="140" height="175" fill="#f7e3a1"/>
+    </g>
+    <g fill="#b0573e">
+      <rect x="14" y="722" width="132" height="10"/><rect x="134" y="712" width="132" height="10"/><rect x="254" y="727" width="132" height="10"/><rect x="374" y="717" width="132" height="10"/>
+      <rect x="1094" y="722" width="132" height="10"/><rect x="1214" y="712" width="132" height="10"/><rect x="1334" y="727" width="132" height="10"/><rect x="1454" y="717" width="146" height="10"/>
+    </g>
+    <g fill="#5b6b7a" opacity="0.55">
+      <rect x="40" y="760" width="22" height="36" rx="10"/><rect x="95" y="760" width="22" height="36" rx="10"/><rect x="160" y="752" width="22" height="36" rx="10"/><rect x="215" y="752" width="22" height="36" rx="10"/><rect x="280" y="765" width="22" height="36" rx="10"/><rect x="335" y="765" width="22" height="36" rx="10"/><rect x="400" y="757" width="22" height="36" rx="10"/><rect x="455" y="757" width="22" height="36" rx="10"/>
+      <rect x="1120" y="760" width="22" height="36" rx="10"/><rect x="1175" y="760" width="22" height="36" rx="10"/><rect x="1240" y="752" width="22" height="36" rx="10"/><rect x="1295" y="752" width="22" height="36" rx="10"/><rect x="1360" y="765" width="22" height="36" rx="10"/><rect x="1415" y="765" width="22" height="36" rx="10"/><rect x="1485" y="757" width="22" height="36" rx="10"/><rect x="1540" y="757" width="22" height="36" rx="10"/>
+    </g>
+    <g fill="#6aa665"><circle cx="560" cy="790" r="40"/><circle cx="610" cy="770" r="34"/><circle cx="1010" cy="790" r="40"/><circle cx="1060" cy="775" r="30"/></g>
+    <g fill="#8cc47a"><circle cx="548" cy="775" r="18"/><circle cx="1000" cy="775" r="18"/></g>
+  </g>
+</svg>
