@@ -111,7 +111,17 @@ function connectLobby() {
 }
 
 // ---------- flow ----------
+let starting = false;
 async function begin(battleStartAt) {
+  if (starting || phase === 'calibrate' || phase === 'countdown' || phase === 'race') return;
+  starting = true;
+  try {
+    await beginInner(battleStartAt);
+  } finally {
+    starting = false;
+  }
+}
+async function beginInner(battleStartAt) {
   myName = $('name').value.trim().slice(0, 16);
   if (!myName) {
     $('joinMsg').textContent = 'Enter a name first.';
@@ -130,6 +140,7 @@ async function begin(battleStartAt) {
   show('camCard', true);
   const tier = TIERS[tierId];
   race = newRace(tier, Boolean(battleStartAt));
+  document.body.classList.remove('frozen');
   setHud(tier);
 
   if (!engine) {
@@ -221,10 +232,12 @@ function update(dt, now) {
   r.mult = newMult;
 
   // obstacles: spawn ahead on the track
-  if (!r.active && r.elapsed > r.nextObAt && r.dist < t.length - 500) {
+  // spawn 12-20% of the route ahead (60-220 m) and never in the last 40 m before the platform
+  const ahead = Math.max(60, Math.min(220, t.length * rand(0.12, 0.2)));
+  if (!r.active && r.elapsed > r.nextObAt && r.dist + ahead < t.length - 40) {
     const keys = Object.keys(OBSTACLES);
     const type = keys[Math.floor(Math.random() * keys.length)];
-    r.obstacles.push({ type, dist: r.dist + 220 + Math.random() * 180, color: OBSTACLES[type].color });
+    r.obstacles.push({ type, dist: r.dist + ahead, color: OBSTACLES[type].color });
     r.nextObAt = r.elapsed + rand(...t.obstacleEvery) + 3;
   }
   // hit obstacle
@@ -399,11 +412,6 @@ async function finish() {
   const pb = !prevGhost || ms < prevGhost.ms;
   if (pb) localStorage.setItem(`mrtrun_ghost_${tierId}`, JSON.stringify({ ms, trace: r.trace }));
 
-  await saveRun({
-    player_id: myId, player_name: myName, color: myColor, tier: tierId,
-    time_ms: ms, obstacles_cleared: r.cleared, sabos_sent: r.sabosSent, mode: r.battle ? 'battle' : 'solo',
-  });
-
   const spare = r.tier.limitSec - r.elapsed;
   document.querySelector('.finish-card').classList.remove('missed');
   document.querySelector('.fin-label').textContent = 'CAUGHT IT!';
@@ -411,7 +419,16 @@ async function finish() {
   $('finStation').style.color = r.tier.color;
   $('finTime').textContent = fmt(ms);
   $('finMeta').innerHTML = `Doors closed ${spare.toFixed(1)}s after you boarded · ${r.cleared} obstacles cleared${pb ? ' · <b class="pb">NEW PERSONAL BEST</b>' : ''}`;
-  const lb = await leaderboard(tierId, { limit: 5 });
+  $('finBoard').innerHTML = '';
+  show('finish', true); // show immediately; leaderboard fills in when the network answers
+  await saveRun({
+    player_id: myId, player_name: myName, color: myColor, tier: tierId,
+    time_ms: ms, obstacles_cleared: r.cleared, sabos_sent: r.sabosSent, mode: r.battle ? 'battle' : 'solo',
+  }).catch((e) => console.warn('saveRun failed', e));
+  if (race !== r || phase !== 'finish') return;
+
+  const lb = await leaderboard(tierId, { limit: 5 }).catch(() => []);
+  if (race !== r || phase !== 'finish') return; // a new run (e.g. battle) started while we waited
   $('finBoard').innerHTML = lb
     .map((row, i) => `<div class="row ${row.player_name === myName ? 'me' : ''}"><span>${i + 1}</span><i style="background:${row.color}"></i><span class="n">${esc(row.player_name)}</span><span class="t">${fmt(row.time_ms)}</span></div>`)
     .join('');
@@ -434,7 +451,10 @@ async function missed() {
   $('finStation').style.color = '#ff3b6b';
   $('finTime').textContent = `${left} m short`;
   $('finMeta').innerHTML = `Next train in 4 min… ${r.cleared} obstacles cleared. Thrash harder and hold your combo!`;
-  const lb = await leaderboard(tierId, { limit: 5 });
+  $('finBoard').innerHTML = '';
+  show('finish', true);
+  const lb = await leaderboard(tierId, { limit: 5 }).catch(() => []);
+  if (race !== r || phase !== 'finish') return;
   $('finBoard').innerHTML = lb
     .map((row, i) => `<div class="row"><span>${i + 1}</span><i style="background:${row.color}"></i><span class="n">${esc(row.player_name)}</span><span class="t">${fmt(row.time_ms)}</span></div>`)
     .join('');
