@@ -131,6 +131,7 @@ export class MotionEngine {
     const img = this.wctx.getImageData(0, 0, W, H);
 
     let changed = 0;
+    let gain = 1;
     let mask = null;
     if (this.useCV) {
       const cv = window.cv;
@@ -142,7 +143,8 @@ export class MotionEngine {
         const diff = new cv.Mat();
         cv.absdiff(gray, this.cvPrev, diff);
         cv.threshold(diff, diff, 25, 255, cv.THRESH_BINARY);
-        cv.dilate(diff, diff, cv.Mat.ones(3, 3, cv.CV_8U));
+        if (!this.kernel) this.kernel = cv.Mat.ones(3, 3, cv.CV_8U); // reused, never leaks
+        cv.dilate(diff, diff, this.kernel);
         if (this.shrink) changed = this.countInBox(diff.data);
         else changed = cv.countNonZero(diff);
         // contours -> motion boxes for the overlay
@@ -179,8 +181,8 @@ export class MotionEngine {
           if (Math.abs(g[j] - this.prevGray[j]) > 25) mask[j] = 255;
         }
         changed = this.shrink ? this.countInBox(mask) : mask.reduce((a, v) => a + (v ? 1 : 0), 0);
-        changed *= 1.35; // no dilate here: match the OpenCV path's reading
         this.boxes = [];
+        gain = 1.35; // no dilate on this path: match the OpenCV reading
       }
       this.prevGray = g;
     }
@@ -189,7 +191,7 @@ export class MotionEngine {
     const frac = (changed / area) * 100;
     this.shake = !this.shrink && frac > 85;
     // smooth raw
-    this.raw = this.raw * 0.5 + frac * 0.5;
+    this.raw = this.raw * 0.6 + frac * gain * 0.4;
     // calibrated 0..100: subtract noise + small deadzone, ~16% changed = 100
     // (tuned on fake webcam clips: still <5, arm wave ~55, full thrash 100)
     const m = Math.max(0, this.raw - this.noise * 1.3 - 0.8) * (100 / 15);
