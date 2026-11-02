@@ -18,9 +18,9 @@ let tierId = localStorage.getItem('mrtrun_tier') || 'easy';
 // ---------- config ----------
 const COMBO_ON = 40;
 const OBSTACLES = {
-  signal: { title: 'SIGNAL FAULT', sub: 'THRASH HARD to reset the signal!', need: 1.4, color: '#ffb020', test: (m) => m > 55, speed: 0 },
-  doors: { title: 'DOORS CLOSING', sub: 'FREEZE! Stand completely still', need: 1.5, color: '#38b6ff', test: (m) => m < 10, speed: 0 },
-  crowd: { title: 'CROWD SURGE', sub: 'Keep moving to push through!', need: 2.5, color: '#ff3b6b', test: (m) => m > 35, speed: 0.35 },
+  escalator: { title: 'BROKEN ESCALATOR', sub: 'THRASH HARD up the stairs!', need: 1.4, color: '#ffb020', test: (m) => m > 55, speed: 0 },
+  redman: { title: 'RED MAN!', sub: 'Traffic light: FREEZE, stand completely still', need: 1.5, color: '#ff3b6b', test: (m) => m < 10, speed: 0 },
+  crowd: { title: 'LUNCH CROWD', sub: 'Keep moving to squeeze through!', need: 2.2, color: '#38b6ff', test: (m) => m > 35, speed: 0.35 },
 };
 const OB_TIMEOUT = 6;
 
@@ -57,16 +57,18 @@ $('colors').onclick = (e) => {
 };
 renderColors();
 
-async function renderTiers() {
+async function renderTiers(withRecords = false) {
+  if (!withRecords) renderTiers(true);
   const cards = await Promise.all(
     Object.values(TIERS).map(async (t) => {
-      const lb = await leaderboard(t.id, { limit: 1 }).catch(() => []);
+      const lb = withRecords ? await leaderboard(t.id, { limit: 1 }).catch(() => []) : [];
       const best = lb[0] ? `${fmt(lb[0].time_ms)} by ${esc(lb[0].player_name)}` : 'No runs yet';
+      const badges = (st) => st.codes.map((c, i) => `<i class="lb" style="background:${st.lines[i]?.color || st.lines[0].color}">${c}</i>`).join('');
       return `<button class="tier ${t.id === tierId ? 'on' : ''}" data-t="${t.id}" style="--lc:${t.color}">
-        <span class="tier-diff">${t.label}</span>
-        <span class="tier-name">${t.name}</span>
-        <span class="tier-route">${t.stations[0][0]} → ${t.stations.at(-1)[0]}</span>
-        <span class="tier-meta">${t.line} · ${t.stations.length} stops · ${(t.length / 1000).toFixed(1)} km</span>
+        <span class="tier-diff">${t.label} · ${t.name}</span>
+        <span class="tier-leg"><span class="st">${badges(t.from)}<b>${t.from.name}</b></span><span class="walk">🚶 ${Math.round(t.length)} m</span><span class="st">${badges(t.to)}<b>${t.to.name}</b></span></span>
+        <span class="tier-meta">${t.blurb}</span>
+        <span class="depart">Doors close in <b>${t.limitSec}s</b><small>real walk ≈ ${Math.round(t.walkSec / 60)} min</small></span>
         <span class="tier-best">Record: ${best}</span>
       </button>`;
     })
@@ -258,17 +260,21 @@ function update(dt, now) {
   const passed = ni === -1 ? t.stations.length - 1 : ni - 1;
   if (passed > r.lastStation) {
     r.lastStation = passed;
-    if (passed < t.stations.length - 1) {
+    if (passed < t.stations.length - 1 && t.stations[passed][0]) {
       toast(`Now at <b>${t.stations[passed][0]}</b>`, t.color);
       sfx.dingdong();
     }
   }
 
   // HUD
-  $('timer').textContent = fmt(r.elapsed * 1000);
+  const left = t.limitSec - r.elapsed;
+  $('timer').textContent = fmt(Math.max(0, left) * 1000);
+  $('timer').classList.toggle('warn', left < 20 && left >= 10);
+  $('timer').classList.toggle('danger', left < 10);
+  if (left <= 0 && r.dist < t.length - 0.5) return missed();
   $('progressFill').style.width = `${(r.dist / t.length) * 100}%`;
-  $('nextStation').textContent = ni === -1 ? t.stations.at(-1)[0] : t.stations[ni][0];
-  $('speed').textContent = Math.round(Math.min(130, (r.v / r.vmax) * 80));
+  $('nextStation').textContent = `${Math.max(0, Math.round(t.length - r.dist))} m to ${t.to.name}`;
+  $('speed').textContent = Math.round(Math.min(35, (r.v / r.vmax) * 22));
   $('combo').textContent = `x${r.mult}`;
   $('comboBox').classList.toggle('hot', r.mult > 1);
   renderSabo();
@@ -398,13 +404,39 @@ async function finish() {
     time_ms: ms, obstacles_cleared: r.cleared, sabos_sent: r.sabosSent, mode: r.battle ? 'battle' : 'solo',
   });
 
-  $('finStation').textContent = r.tier.stations.at(-1)[0];
+  const spare = r.tier.limitSec - r.elapsed;
+  document.querySelector('.finish-card').classList.remove('missed');
+  document.querySelector('.fin-label').textContent = 'CAUGHT IT!';
+  $('finStation').textContent = `${r.tier.to.codes.join('/')} ${r.tier.to.name}`;
   $('finStation').style.color = r.tier.color;
   $('finTime').textContent = fmt(ms);
-  $('finMeta').innerHTML = `${r.tier.name} · ${r.cleared} obstacles cleared${pb ? ' · <b class="pb">NEW PERSONAL BEST</b>' : ''}`;
+  $('finMeta').innerHTML = `Doors closed ${spare.toFixed(1)}s after you boarded · ${r.cleared} obstacles cleared${pb ? ' · <b class="pb">NEW PERSONAL BEST</b>' : ''}`;
   const lb = await leaderboard(tierId, { limit: 5 });
   $('finBoard').innerHTML = lb
     .map((row, i) => `<div class="row ${row.player_name === myName ? 'me' : ''}"><span>${i + 1}</span><i style="background:${row.color}"></i><span class="n">${esc(row.player_name)}</span><span class="t">${fmt(row.time_ms)}</span></div>`)
+    .join('');
+  show('finish', true);
+}
+
+async function missed() {
+  phase = 'finish';
+  const r = race;
+  if (engine) engine.shrink = null;
+  show('hud', false);
+  show('saboBar', false);
+  show('obstacle', false);
+  lobby?.send('finish', { id: myId, name: myName, color: myColor, tier: tierId, time_ms: null, missed: true });
+  sfx.alarm();
+  const left = Math.max(0, Math.round(r.tier.length - r.dist));
+  document.querySelector('.finish-card').classList.add('missed');
+  document.querySelector('.fin-label').textContent = 'MISSED IT';
+  $('finStation').textContent = `Doors closed at ${r.tier.to.name}`;
+  $('finStation').style.color = '#ff3b6b';
+  $('finTime').textContent = `${left} m short`;
+  $('finMeta').innerHTML = `Next train in 4 min… ${r.cleared} obstacles cleared. Thrash harder and hold your combo!`;
+  const lb = await leaderboard(tierId, { limit: 5 });
+  $('finBoard').innerHTML = lb
+    .map((row, i) => `<div class="row"><span>${i + 1}</span><i style="background:${row.color}"></i><span class="n">${esc(row.player_name)}</span><span class="t">${fmt(row.time_ms)}</span></div>`)
     .join('');
   show('finish', true);
 }
@@ -423,7 +455,7 @@ function render(now) {
     ghostDist,
     myColor,
     frozen: race && now < race.frozenUntil,
-    viewMetres: 2400,
+    viewMetres: tier.viewMetres || 2400,
   });
 }
 

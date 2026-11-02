@@ -21,7 +21,9 @@ const streets = (() => {
   return out;
 })();
 
+let RUNNER = false;
 export function drawMap(ctx, w, h, tier, st) {
+  RUNNER = Boolean(tier.walk);
   const pts = tier.stations.map((s) => toM(s[1], s[2]));
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
@@ -35,14 +37,19 @@ export function drawMap(ctx, w, h, tier, st) {
   if (st.follow && meM) {
     scale = Math.min(w, h) / (st.viewMetres || 2600);
     // look slightly ahead
-    const ahead = toM(...latlng(pointAt(tier, st.dist + 350)));
+    const ahead = toM(...latlng(pointAt(tier, st.dist + (st.viewMetres || 2600) * 0.14)));
     cx = meM.x * 0.6 + ahead.x * 0.4;
     cy = meM.y * 0.6 + ahead.y * 0.4;
   } else {
+    // fit route into the free area (callers can reserve space for overlays)
     const pad = 70;
-    scale = Math.min((w - pad * 2) / (bounds.x1 - bounds.x0 || 1), (h - pad * 2) / (bounds.y1 - bounds.y0 || 1));
-    cx = (bounds.x0 + bounds.x1) / 2;
-    cy = (bounds.y0 + bounds.y1) / 2;
+    const pt = st.padTop ?? pad;
+    const pb = st.padBottom ?? pad;
+    const pl = st.padLeft ?? pad;
+    const pr = st.padRight ?? pad + 90; // labels sit to the right of stations
+    scale = Math.min((w - pl - pr) / (bounds.x1 - bounds.x0 || 1), (h - pt - pb) / (bounds.y1 - bounds.y0 || 1));
+    cx = (bounds.x0 + bounds.x1) / 2 - ((pl - pr) / 2) / scale;
+    cy = (bounds.y0 + bounds.y1) / 2 - ((pt - pb) / 2) / scale;
   }
   const P = (p) => ({ x: w / 2 + (p.x - cx) * scale, y: h / 2 + (p.y - cy) * scale });
 
@@ -74,10 +81,12 @@ export function drawMap(ctx, w, h, tier, st) {
   ctx.lineWidth = lw + 6;
   ctx.stroke();
   path(ctx, sp);
-  ctx.strokeStyle = tier.color;
-  ctx.globalAlpha = 0.45;
-  ctx.lineWidth = lw;
+  ctx.strokeStyle = tier.walk ? '#e8eef7' : tier.color;
+  ctx.globalAlpha = tier.walk ? 0.55 : 0.45;
+  ctx.lineWidth = tier.walk ? lw * 0.6 : lw;
+  if (tier.walk) ctx.setLineDash([lw * 0.9, lw * 0.9]);
   ctx.stroke();
+  ctx.setLineDash([]);
   ctx.globalAlpha = 1;
   if (st.dist != null) {
     const done = [];
@@ -112,46 +121,80 @@ export function drawMap(ctx, w, h, tier, st) {
   }
 
   // stations
-  ctx.textAlign = 'left';
+  const placed = [];
   tier.stations.forEach((s, i) => {
+    if (!s[0]) return;
     const p = sp[i];
     const passed = st.dist != null && tier.cum[i] <= st.dist;
     const terminus = i === 0 || i === tier.stations.length - 1;
-    const r = st.follow ? (terminus ? 11 : 8) : terminus ? 7 : 5;
+    const r = tier.walk ? (st.follow ? 16 : 10) : st.follow ? (terminus ? 11 : 8) : terminus ? 7 : 5;
     ctx.fillStyle = '#fff';
-    ctx.strokeStyle = passed ? tier.color : '#3a4658';
+    ctx.strokeStyle = tier.walk ? (i === 0 ? tier.fromColor : tier.color) : passed ? tier.color : '#3a4658';
     ctx.lineWidth = st.follow ? 4 : 3;
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     if (st.follow || terminus || st.labels !== false) {
-      const label = `${tier.code}·${s[0]}`;
-      ctx.font = `${terminus ? 700 : 600} ${st.follow ? 15 : 11}px Inter, system-ui`;
+      const label = s[3] || `${tier.code}·${s[0]}`;
+      const fs = st.follow ? 15 : st.labelSize || 11;
+      ctx.font = `${terminus ? 700 : 600} ${fs}px Inter, system-ui`;
       const tw = ctx.measureText(label).width;
-      ctx.fillStyle = 'rgba(10,15,23,0.75)';
-      roundRect(ctx, p.x + r + 6, p.y - 11, tw + 12, 22, 6);
+      const bw = tw + 12;
+      const bh = fs + 10;
+      // normal to the local track direction, so labels never sit on the line (or on a train parked at the station)
+      const a = sp[Math.max(0, i - 1)];
+      const b = sp[Math.min(sp.length - 1, i + 1)];
+      let nx = -(b.y - a.y);
+      let ny = b.x - a.x;
+      const nl = Math.hypot(nx, ny) || 1;
+      nx /= nl;
+      ny /= nl;
+      const gap = r + (st.follow ? 20 : 8);
+      const boxAt = (sx, sy) => {
+        const ax = p.x + sx * nx * gap;
+        const ay = p.y + sy * ny * gap;
+        const right = sx * nx >= -0.2;
+        const x = right ? ax : ax - bw;
+        const y = Math.abs(ny) > 0.7 ? (sy * ny > 0 ? ay : ay - bh) : ay - bh / 2;
+        return { x, y, w: bw, h: bh };
+      };
+      const hits = (q) => placed.some((o) => q.x < o.x + o.w + 4 && q.x + q.w + 4 > o.x && q.y < o.y + o.h + 2 && q.y + q.h + 2 > o.y);
+      let box = boxAt(nx >= 0 ? 1 : -1, nx >= 0 ? 1 : -1);
+      if (hits(box)) {
+        const alt = boxAt(nx >= 0 ? -1 : 1, nx >= 0 ? -1 : 1);
+        if (!hits(alt)) box = alt;
+      }
+      placed.push(box);
+      ctx.fillStyle = 'rgba(10,15,23,0.8)';
+      roundRect(ctx, box.x, box.y, box.w, box.h, 6);
       ctx.fill();
       ctx.fillStyle = passed ? '#fff' : '#9fb0c6';
-      ctx.fillText(label, p.x + r + 12, p.y + 5);
+      ctx.textAlign = 'left';
+      ctx.fillText(label, box.x + 6, box.y + bh / 2 + fs * 0.36);
     }
   });
 
-  // other trains (ghosts)
+  // other trains (rivals), PB ghost, me. Name tags drawn last so nothing covers them.
+  const tags = [];
+  const os = st.othersScale ?? (st.follow ? 0.9 : 0.6);
+  const oa = st.othersAlpha ?? 0.55;
   for (const o of st.others || []) {
     const p = P(toM(...latlng(pointAt(tier, o.dist))));
-    drawTrain(ctx, p, angleAt(tier, o.dist, P), o.color, st.follow ? 0.9 : 0.6, 0.55, o.name);
+    drawTrain(ctx, p, angleAt(tier, o.dist, P), o.color, os, oa);
+    if (o.name) tags.push({ p, s: os, color: o.color, label: o.name });
   }
-  // personal-best ghost
   if (st.ghostDist != null) {
     const p = P(toM(...latlng(pointAt(tier, st.ghostDist))));
-    drawTrain(ctx, p, angleAt(tier, st.ghostDist, P), '#ffffff', st.follow ? 0.9 : 0.6, 0.25, 'PB');
+    const gs = st.follow ? 0.9 : 0.6;
+    drawTrain(ctx, p, angleAt(tier, st.ghostDist, P), '#ffffff', gs, 0.25);
+    tags.push({ p, s: gs, color: '#ffffff', label: 'PB', dim: true });
   }
-  // me
   if (meM) {
     const p = P(meM);
     drawTrain(ctx, p, angleAt(tier, st.dist, P), st.myColor || tier.color, st.follow ? 1.15 : 0.8, 1, null, st.frozen);
   }
+  drawTags(ctx, tags, st.tagSize || (st.follow ? 13 : 12));
 
   if (st.follow && st.minimap !== false) drawMinimap(ctx, w, h, tier, st, pts, bounds);
 }
@@ -166,7 +209,41 @@ function angleAt(tier, dist, P) {
   return Math.atan2(b.y - a.y, b.x - a.x);
 }
 
+function drawRunner(ctx, p, color, s, alpha, frozen) {
+  const t = performance.now() / 90;
+  const bob = Math.abs(Math.sin(t)) * 5 * s;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(p.x, p.y - bob);
+  ctx.scale(s, s);
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 22;
+  ctx.fillStyle = frozen ? '#9fe8ff' : color;
+  ctx.beginPath();
+  ctx.arc(0, 0, 13, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  // little runner glyph
+  ctx.strokeStyle = '#0b0f14';
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  const k = Math.sin(t) * 5;
+  ctx.beginPath();
+  ctx.arc(1, -6, 2.6, 0, Math.PI * 2);
+  ctx.moveTo(0, -2); ctx.lineTo(-1, 4);
+  ctx.moveTo(-1, 4); ctx.lineTo(-1 + k, 9);
+  ctx.moveTo(-1, 4); ctx.lineTo(-1 - k, 9);
+  ctx.moveTo(0, 0); ctx.lineTo(4 + k * 0.6, 2);
+  ctx.moveTo(0, 0); ctx.lineTo(-4 - k * 0.6, 1);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawTrain(ctx, p, ang, color, s, alpha, label, frozen) {
+  if (RUNNER) return drawRunner(ctx, p, color, s, alpha, frozen);
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(p.x, p.y);
@@ -196,6 +273,33 @@ function drawTrain(ctx, p, ang, color, s, alpha, label, frozen) {
     ctx.fillText(label, p.x, p.y - 22 * s);
     ctx.restore();
   }
+}
+
+function drawTags(ctx, tags, fs) {
+  const boxes = [];
+  ctx.save();
+  ctx.font = `800 ${fs}px Inter, system-ui`;
+  ctx.textAlign = 'center';
+  for (const t of tags) {
+    const tw = ctx.measureText(t.label).width;
+    const w = tw + 14;
+    const h = fs + 8;
+    let x = t.p.x - w / 2;
+    let y = t.p.y - 30 * t.s - h;
+    // stack tags upward if two trains are close together
+    for (let k = 0; k < 6 && boxes.some((b) => x < b.x + b.w && x + w > b.x && y < b.y + b.h && y + h > b.y); k++) y -= h + 3;
+    boxes.push({ x, y, w, h });
+    ctx.globalAlpha = t.dim ? 0.6 : 1;
+    ctx.fillStyle = 'rgba(8,12,18,0.85)';
+    roundRect(ctx, x, y, w, h, h / 2);
+    ctx.fill();
+    ctx.strokeStyle = t.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = t.color;
+    ctx.fillText(t.label, t.p.x, y + h / 2 + fs * 0.36);
+  }
+  ctx.restore();
 }
 
 function drawMinimap(ctx, w, h, tier, st, pts, b) {

@@ -58,7 +58,7 @@ const lobby = joinLobby({
     if (ev === 'tick') live.set(p.id, { ...p, at: performance.now() });
     if (ev === 'finish') {
       live.delete(p.id);
-      feed(`<i style="background:${p.color}"></i><b>${esc(p.name)}</b> reached the terminus on ${TIERS[p.tier]?.label} in ${fmt(p.time_ms)}`);
+      feed(p.missed ? `🚪 <b style="color:${p.color}">${esc(p.name)}</b> MISSED the train at ${TIERS[p.tier]?.to.name}` : `🚇 <b style="color:${p.color}">${esc(p.name)}</b> CAUGHT the train at ${TIERS[p.tier]?.to.name} in ${fmt(p.time_ms)}`);
       setTimeout(renderBoards, 1200);
     }
     if (ev === 'sabo') {
@@ -108,9 +108,18 @@ function frame(now) {
     lastSwitch = now;
   }
   const tier = TIERS[shownTier];
+  const npH = $('npList').parentElement.offsetHeight || 80;
   drawMap(ctx, canvas._w, canvas._h, tier, {
     dist: null,
     follow: false,
+    padTop: 90,
+    padBottom: npH + 50,
+    padLeft: 60,
+    padRight: 200,
+    labelSize: canvas._w > 1200 ? 13 : 11,
+    othersScale: canvas._w > 1200 ? 0.95 : 0.75,
+    othersAlpha: 1,
+    tagSize: canvas._w > 1200 ? 15 : 13,
     others: players.filter((p) => p.tier === tier.id).map((p) => ({ dist: p.dist, color: p.color, name: p.name })),
   });
   $('mapLabel').innerHTML = `<span style="background:${tier.color}">${tier.code}</span>${tier.name} · ${tier.line}`;

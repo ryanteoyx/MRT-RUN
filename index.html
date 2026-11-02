@@ -16,12 +16,12 @@
     <section id="join" class="panel-screen">
       <div class="join-card">
         <div class="brand"><span class="logo">MRT RUN</span><span class="sub">Thrash to drive · powered by OpenCV + Supabase Realtime</span></div>
-        <p class="lede">Thrash in front of your webcam to drive the train. Clear the obstacles. Beat the clock.</p>
+        <p class="lede">Your train just pulled in. Pick a real CBD transfer, then thrash in front of your webcam to run to the next line before its doors close.</p>
         <label class="field">Your name<input id="name" maxlength="16" placeholder="e.g. Ryan" autocomplete="off" /></label>
         <div class="field">Colour<div id="colors" class="colors"></div></div>
-        <div class="field">Pick your line<div id="tiers" class="tiers"></div></div>
+        <div class="field">Pick your transfer<div id="tiers" class="tiers"></div></div>
         <label class="battle-toggle"><input type="checkbox" id="battleReady" /> Join battles started from the big screen</label>
-        <button id="startBtn" class="btn-primary">Start run</button>
+        <button id="startBtn" class="btn-primary">Tap in &amp; run</button>
         <p id="joinMsg" class="hint"></p>
       </div>
     </section>
@@ -38,7 +38,7 @@
       <div class="hud-left">
         <div class="line-badge" id="lineBadge">NS</div>
         <div>
-          <div class="hud-label">Next station</div>
+          <div class="hud-label">Run to platform</div>
           <div class="hud-next" id="nextStation">—</div>
         </div>
       </div>
