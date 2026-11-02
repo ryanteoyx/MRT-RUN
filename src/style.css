@@ -401,3 +401,27 @@ body.screen { background: var(--bg); }
 .ready { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aab6c6; }
 .ready-dots { display: flex; gap: 3px; }
 .ready-dots i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+/* ---------- First-person run layout ---------- */
+#street { position: fixed; inset: 0; width: 100vw; height: 100vh; display: none; }
+body.racing #street { display: block; }
+body.racing #map { left: auto; top: auto; right: 16px; bottom: 16px; width: 360px; height: 300px; border-radius: 18px; border: 2px solid rgba(255,255,255,0.25); box-shadow: 0 12px 30px rgba(0,0,0,0.45); z-index: 9; }
+body.racing .dir-box { top: 140px; transform: translateX(-50%) scale(1.25); }
+.wave-box { position: fixed; left: 16px; bottom: 16px; width: 300px; background: rgba(11,15,20,0.82); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 10px 12px 8px; z-index: 9; }
+.wave-head { display: flex; gap: 14px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #c9d4e3; margin-bottom: 4px; }
+.wave-head i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.wave-head .k1 { background: #2ee6a6; } .wave-head .k2 { background: #ffd23f; }
+.wave-box canvas { width: 100%; height: 100px; display: block; }
+body.racing .sabo-bar { bottom: 160px; }
+body.racing .cam-card { width: 200px; }
+
+/* ---------- More realistic SG MRT doors ---------- */
+.doors { box-shadow: 0 0 0 14px #3b4148, 0 0 0 16px #22262b; border-radius: 6px 6px 0 0; }
+.door { background: linear-gradient(90deg, #eef1f4 0%, #d9dee3 60%, #c7cdd3 100%); padding-top: 9%; }
+.door.right { background: linear-gradient(270deg, #eef1f4 0%, #d9dee3 60%, #c7cdd3 100%); }
+.door.left { border-right: 0; box-shadow: inset -7px 0 0 #1c1f23; }
+.door.right { border-left: 0; box-shadow: inset 7px 0 0 #1c1f23; }
+.dwin { width: 52%; height: 58%; border-radius: 10px; background: linear-gradient(160deg, rgba(160,200,225,0.55), rgba(40,55,70,0.75)); box-shadow: inset 0 0 0 5px #2a2f35, inset 0 0 22px rgba(0,0,0,0.45); }
+.dsticker { font-size: 11px; background: #ffd400; color: #111; border-radius: 4px; }
+.door-light { top: -22px; width: 70px; height: 12px; background: #3a1414; border: 2px solid #22262b; }
+.carriage::after { content: ''; position: absolute; left: 50%; top: 70%; width: min(600px, 50vw); height: 14px; transform: translateX(-50%); background: repeating-linear-gradient(90deg, #ffd400 0 30px, #222 30px 60px); opacity: 0.9; }

@@ -10,7 +10,9 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body class="play">
+    <canvas id="street"></canvas>
     <canvas id="map"></canvas>
+    <div id="waveBox" class="wave-box hidden"><div class="wave-head"><span><i class="k1"></i>Wave</span><span><i class="k2"></i>Run speed</span></div><canvas id="waveChart" width="560" height="200"></canvas></div>
 
     <!-- Join -->
     <section id="join" class="panel-screen landing" data-step="start">
@@ -49,9 +51,9 @@
             </div>
             <div class="setup-steps">
               <ol class="checks">
-                <li><b>Step back</b><small>Head to waist in frame</small></li>
-                <li><b>Face the light</b><small>No window behind you</small></li>
-                <li><b>Wave your arms</b><small>Green boxes = we see you</small></li>
+                <li><b>Hands up ✋</b><small>Keep both hands in the picture</small></li>
+                <li><b>Wave faster = run faster</b><small>Stop waving and you stop</small></li>
+                <li><b>Try it now</b><small>Green boxes show your hands moving</small></li>
               </ol>
               <div class="who">
                 <input id="name" maxlength="16" placeholder="Your name" autocomplete="off" />
@@ -116,7 +118,7 @@
     </div>
 
     <!-- Direction arrow during the run -->
-    <div id="dirBox" class="dir-box hidden"><div class="dir-arrow" id="dirArrow">➤</div><div><small>Head to</small><b id="dirTo">—</b><span id="dirLeft"></span></div></div>
+    <div id="dirBox" class="dir-box hidden"><div class="dir-arrow" id="dirArrow">⬆</div><div><small id="dirHint">Straight on to</small><b id="dirTo">—</b><span id="dirLeft"></span></div></div>
     <div id="toast" class="toast"></div>
     <div id="obstacle" class="obstacle hidden">
       <div class="ob-title" id="obTitle"></div>

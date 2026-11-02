@@ -1,6 +1,7 @@
 import confetti from 'canvas-confetti';
 import { TIERS, nextStationIndex, pointAt } from './routes.js';
 import { drawMap } from './map.js';
+import { drawStreet } from './fpv.js';
 import { MotionEngine } from './motion.js';
 import { joinLobby, saveRun, leaderboard, online } from './net.js';
 import { sfx, initAudio, rumble, doorChime, announce } from './sound.js';
@@ -33,11 +34,24 @@ let race = null;
 const others = new Map();
 let lobby = null;
 
+const street = $('street');
+const sctx = street.getContext('2d');
+const wave = $('waveChart').getContext('2d');
+const waveHist = [];
 function resize() {
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = innerWidth * dpr;
-  canvas.height = innerHeight * dpr;
+  const cw = canvas.clientWidth || innerWidth;
+  const ch = canvas.clientHeight || innerHeight;
+  canvas.width = cw * dpr;
+  canvas.height = ch * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  street.width = innerWidth * dpr;
+  street.height = innerHeight * dpr;
+  sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function setRacing(on) {
+  document.body.classList.toggle('racing', on);
+  requestAnimationFrame(resize);
 }
 addEventListener('resize', resize);
 resize();
@@ -265,6 +279,9 @@ async function beginInner(battleStartAt) {
   await sleep(700);
   show('onboard', false);
   center(null);
+  setRacing(true);
+  waveHist.length = 0;
+  show('waveBox', true);
   show('hud', true);
   show('dirBox', true);
   show('saboBar', mode === 'battle');
@@ -317,6 +334,8 @@ function update(dt, now) {
   r.elapsed = (now - r.t0) / 1000;
   const m = engine && Number.isFinite(engine.motion) ? Math.max(0, Math.min(100, engine.motion)) : 0;
   $('meterFill').style.width = `${m}%`;
+  waveHist.push([m, Math.min(100, (r.v / r.vmax) * 100)]);
+  if (waveHist.length > 240) waveHist.shift();
 
   // shrink sabotage
   if (engine) engine.shrink = now < r.shrinkUntil ? { x: 0.38, y: 0.3, w: 0.24, h: 0.4 } : null;
@@ -384,10 +403,20 @@ function update(dt, now) {
   // HUD
   // direction arrow (north-up): from where you are to a point 40 m ahead on the path
   {
-    const p0 = pointAt(t, r.dist);
-    const p1 = pointAt(t, Math.min(t.length, r.dist + 40));
-    const ang = Math.atan2(-(p1.lat - p0.lat), (p1.lng - p0.lng) * Math.cos(p0.lat * Math.PI / 180));
-    $('dirArrow').style.transform = `rotate(${ang}rad)`;
+    const head = (a, b) => {
+      const p0 = pointAt(t, a);
+      const p1 = pointAt(t, b);
+      return Math.atan2(-(p1.lat - p0.lat), (p1.lng - p0.lng) * Math.cos(p0.lat * Math.PI / 180));
+    };
+    const now0 = head(Math.max(0, r.dist - 8), r.dist + 8);
+    const next = head(r.dist + 18, Math.min(t.length, r.dist + 40));
+    let turn = next - now0;
+    while (turn > Math.PI) turn -= 2 * Math.PI;
+    while (turn < -Math.PI) turn += 2 * Math.PI;
+    const deg = (turn * 180) / Math.PI;
+    const clamp = Math.max(-90, Math.min(90, deg));
+    $('dirArrow').style.transform = `rotate(${Math.abs(deg) < 25 ? 0 : clamp}deg)`;
+    $('dirHint').textContent = Math.abs(deg) < 25 ? 'Straight on to' : deg > 0 ? 'Turn right for' : 'Turn left for';
     $('dirTo').textContent = t.to.name;
     $('dirLeft').textContent = `${Math.max(0, Math.round(t.length - r.dist))} m`;
   }
@@ -515,6 +544,8 @@ async function finish() {
   show('hud', false);
   show('saboBar', false);
   show('dirBox', false);
+  show('waveBox', false);
+  setRacing(false);
   show('obstacle', false);
   lobby?.send('finish', { id: myId, name: myName, color: myColor, tier: tierId, time_ms: ms });
   sfx.horn();
@@ -554,6 +585,8 @@ async function missed() {
   show('hud', false);
   show('saboBar', false);
   show('dirBox', false);
+  show('waveBox', false);
+  setRacing(false);
   show('obstacle', false);
   lobby?.send('finish', { id: myId, name: myName, color: myColor, tier: tierId, time_ms: null, missed: true });
   sfx.alarm();
@@ -580,7 +613,20 @@ function render(now) {
   for (const [id, o] of others) if (now - o.at > 4000) others.delete(id);
   const ghost = race?.ghost;
   const ghostDist = ghost && phase === 'race' ? ghost.trace[Math.min(ghost.trace.length - 1, Math.floor(race.elapsed * 2))] : null;
-  drawMap(ctx, innerWidth, innerHeight, tier, {
+  const racing = document.body.classList.contains('racing') && race;
+  if (racing) {
+    drawStreet(sctx, innerWidth, innerHeight, tier, race.dist, { speed: race.v / race.vmax });
+    drawWave();
+  }
+  drawMap(ctx, canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight, tier, racing ? {
+    dist: race.dist,
+    follow: false,
+    minimap: false,
+    obstacles: race.obstacles,
+    others: [...others.values()].filter((o) => o.tier === tier.id).map((o) => ({ dist: o.dist, color: o.color, name: o.name })),
+    myColor,
+    padTop: 30, padBottom: 30, padLeft: 30, padRight: 110,
+  } : {
     dist: race ? race.dist : phase === 'join' ? null : 0,
     follow: Boolean(race) && phase !== 'join',
     obstacles: race?.obstacles,
@@ -590,6 +636,43 @@ function render(now) {
     frozen: race && now < race.frozenUntil,
     viewMetres: tier.viewMetres || 2400,
   });
+}
+
+function drawWave() {
+  const W = 560, H = 200;
+  wave.clearRect(0, 0, W, H);
+  wave.strokeStyle = 'rgba(255,255,255,0.08)';
+  wave.lineWidth = 1;
+  for (let y = 0; y <= 4; y++) {
+    wave.beginPath();
+    wave.moveTo(0, (H / 4) * y);
+    wave.lineTo(W, (H / 4) * y);
+    wave.stroke();
+  }
+  const n = waveHist.length;
+  const line = (k, color, fill) => {
+    wave.beginPath();
+    waveHist.forEach((v, i) => {
+      const x = W - (n - 1 - i) * (W / 239);
+      const y = H - (v[k] / 100) * (H - 8) - 4;
+      i ? wave.lineTo(x, y) : wave.moveTo(x, y);
+    });
+    wave.strokeStyle = color;
+    wave.lineWidth = 4;
+    wave.lineJoin = 'round';
+    wave.stroke();
+    if (fill) {
+      wave.lineTo(W, H);
+      wave.lineTo(W - (n - 1) * (W / 239), H);
+      wave.closePath();
+      wave.fillStyle = fill;
+      wave.fill();
+    }
+  };
+  if (n > 1) {
+    line(0, '#2ee6a6', 'rgba(46,230,166,0.15)');
+    line(1, '#ffd23f');
+  }
 }
 
 // ---------- helpers ----------
