@@ -425,3 +425,13 @@ body.racing .cam-card { width: 200px; }
 .dsticker { font-size: 11px; background: #ffd400; color: #111; border-radius: 4px; }
 .door-light { top: -22px; width: 70px; height: 12px; background: #3a1414; border: 2px solid #22262b; }
 .carriage::after { content: ''; position: absolute; left: 50%; top: 70%; width: min(600px, 50vw); height: 14px; transform: translateX(-50%); background: repeating-linear-gradient(90deg, #ffd400 0 30px, #222 30px 60px); opacity: 0.9; }
+
+/* ---------- 3D OpenStreetMap first-person view ---------- */
+#fp3d, #sprites { position: fixed; inset: 0; width: 100vw; height: 100vh; display: none; }
+body.racing.fp #fp3d { display: block; z-index: 1; }
+body.racing.fp #sprites { display: block; z-index: 2; pointer-events: none; }
+body.racing.fp #street { display: none; }
+body.racing #map, .wave-box, .hud, .dir-box, .cam-card, .prompt, .toast, .obstacle { z-index: 9; }
+#fp3d .maplibregl-ctrl-attrib { font-size: 10px; opacity: 0.75; }
+.prompt { position: fixed; top: 205px; left: 50%; transform: translateX(-50%); background: rgba(11,15,20,0.9); color: #fff; border: 2px solid var(--pc, #2ee6a6); border-radius: 999px; padding: 10px 20px; font-family: 'Barlow Condensed', Inter; font-weight: 800; font-size: 26px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; box-shadow: 0 0 30px color-mix(in srgb, var(--pc, #2ee6a6) 40%, transparent); }
+.toast { top: 265px; }

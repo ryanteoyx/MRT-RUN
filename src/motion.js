@@ -76,6 +76,10 @@ export class MotionEngine {
     this.shake = false;
     this.boxes = [];
     this.shrink = null; // {x,y,w,h} in 0..1 when sabotaged
+    // gesture zones (0..100 each, smoothed): left/right halves, top band, centre tap box
+    this.zones = { left: 0, right: 0, top: 0, tap: 0 };
+    this.lateral = 0; // -1 (waving on your left) .. +1 (your right)
+    this.showZones = false;
     this.running = false;
   }
 
@@ -147,6 +151,7 @@ export class MotionEngine {
         cv.dilate(diff, diff, this.kernel);
         if (this.shrink) changed = this.countInBox(diff.data);
         else changed = cv.countNonZero(diff);
+        this.zoneUpdate(diff.data);
         // contours -> motion boxes for the overlay
         const contours = new cv.MatVector();
         const hier = new cv.Mat();
@@ -181,6 +186,7 @@ export class MotionEngine {
           if (Math.abs(g[j] - this.prevGray[j]) > 25) mask[j] = 255;
         }
         changed = this.shrink ? this.countInBox(mask) : mask.reduce((a, v) => a + (v ? 1 : 0), 0);
+        this.zoneUpdate(mask);
         this.boxes = [];
         gain = 1.35; // no dilate on this path: match the OpenCV reading
       }
@@ -210,6 +216,30 @@ export class MotionEngine {
     return n;
   }
 
+  // frame is mirrored, so image-left = player's left
+  zoneUpdate(data) {
+    let l = 0, r = 0, top = 0, tap = 0;
+    const tx0 = Math.floor(W * 0.38), tx1 = Math.floor(W * 0.62), ty0 = Math.floor(H * 0.55), ty1 = Math.floor(H * 0.95);
+    for (let y = 0; y < H; y++) {
+      const row = y * W;
+      for (let x = 0; x < W; x++) {
+        if (!data[row + x]) continue;
+        if (x < W / 2) l++; else r++;
+        if (y < H * 0.3) top++;
+        if (x >= tx0 && x < tx1 && y >= ty0 && y < ty1) tap++;
+      }
+    }
+    const half = (W * H) / 2;
+    const sm = (old, v) => old * 0.6 + v * 0.4;
+    const z = this.zones;
+    z.left = sm(z.left, Math.min(100, (l / half) * 100 * 6));
+    z.right = sm(z.right, Math.min(100, (r / half) * 100 * 6));
+    z.top = sm(z.top, Math.min(100, (top / (W * H * 0.3)) * 100 * 6));
+    z.tap = sm(z.tap, Math.min(100, (tap / ((tx1 - tx0) * (ty1 - ty0))) * 100 * 4));
+    const tot = z.left + z.right;
+    this.lateral = tot > 8 ? (z.right - z.left) / tot : this.lateral * 0.9;
+  }
+
   drawOverlay() {
     const o = this.overlay;
     if (!o) return;
@@ -223,6 +253,20 @@ export class MotionEngine {
     ctx.shadowBlur = 8;
     for (const r of this.boxes) ctx.strokeRect(r.x * sx, r.y * sy, r.width * sx, r.height * sy);
     ctx.shadowBlur = 0;
+    if (this.showZones) {
+      ctx.setLineDash([6, 6]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.beginPath(); ctx.moveTo(o.width / 2, 0); ctx.lineTo(o.width / 2, o.height); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,210,63,0.8)';
+      ctx.strokeRect(o.width * 0.38, o.height * 0.55, o.width * 0.24, o.height * 0.4);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.font = '700 16px Inter, system-ui';
+      ctx.fillText('◀ L', 8, o.height - 10);
+      ctx.fillText('R ▶', o.width - 40, o.height - 10);
+      ctx.fillText('▲ jump', o.width / 2 - 30, 20);
+    }
     if (this.shrink) {
       const b = this.shrink;
       ctx.fillStyle = 'rgba(0,0,0,0.55)';

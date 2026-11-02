@@ -2,6 +2,7 @@ import confetti from 'canvas-confetti';
 import { TIERS, nextStationIndex, pointAt } from './routes.js';
 import { drawMap } from './map.js';
 import { drawStreet } from './fpv.js';
+import { initFP, setRoute, updateFP, drawSprites, fpAvailable, resizeFP } from './fp3d.js';
 import { MotionEngine } from './motion.js';
 import { joinLobby, saveRun, leaderboard, online } from './net.js';
 import { sfx, initAudio, rumble, doorChime, announce } from './sound.js';
@@ -21,7 +22,6 @@ const COMBO_ON = 40;
 const OBSTACLES = {
   escalator: { title: 'BROKEN ESCALATOR', sub: 'Wave hard!', need: 1.4, color: '#ffb020', test: (m) => m > 55, speed: 0 },
   redman: { title: 'RED MAN!', sub: 'Freeze!', need: 1.5, color: '#ff3b6b', test: (m) => m < 10, speed: 0 },
-  crowd: { title: 'LUNCH CROWD', sub: 'Keep waving', need: 2.2, color: '#38b6ff', test: (m) => m > 35, speed: 0.35 },
 };
 const OB_TIMEOUT = 6;
 
@@ -49,9 +49,13 @@ function resize() {
   street.height = innerHeight * dpr;
   sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
+initFP($('fp3d'), $('sprites'));
+addEventListener('resize', () => resizeFP());
 function setRacing(on) {
   document.body.classList.toggle('racing', on);
-  requestAnimationFrame(resize);
+  document.body.classList.toggle('fp', on && fpAvailable());
+  if (engine) engine.showZones = on;
+  requestAnimationFrame(() => { resize(); resizeFP(); });
 }
 addEventListener('resize', resize);
 resize();
@@ -101,6 +105,25 @@ $('tiers').onclick = (e) => {
 renderTiers();
 if (!online) $('joinMsg').textContent = 'Offline mode: leaderboard is saved on this browser only.';
 
+// ---------- demo mode (?demo=1): simulated waving, no camera ----------
+const DEMO = new URLSearchParams(location.search).has('demo');
+function fakeEngine() {
+  const e = { motion: 0, zones: { left: 0, right: 0, top: 0, tap: 0 }, lateral: 0, shrink: null, showZones: false, noise: 1 };
+  e.start = async () => {
+    setInterval(() => {
+      const t = performance.now() / 1000;
+      e.motion = 62 + 25 * Math.sin(t * 1.3);
+      e.lateral = Math.sin(t * 0.45);
+      e.zones.top = Math.sin(t * 0.8) > 0.6 ? 60 : 5;
+      e.zones.tap = 50;
+    }, 66);
+    return false;
+  };
+  e.calibrate = async () => sleep(1500);
+  e.stop = () => {};
+  return e;
+}
+
 // ---------- step navigation ----------
 let mode = 'solo';
 function go(step) {
@@ -130,7 +153,7 @@ async function enterSetup() {
   $('joinMsg').textContent = '';
   // start the camera now so players can frame themselves before the run
   if (!engine) {
-    engine = new MotionEngine($('video'), $('overlay'));
+    engine = DEMO ? fakeEngine() : new MotionEngine($('video'), $('overlay'));
     try {
       const cv = await engine.start();
       $('engineTag').textContent = cv ? 'OpenCV.js' : 'Canvas fallback';
@@ -237,11 +260,12 @@ async function beginInner(battleStartAt) {
   show('camCard', true);
   const tier = TIERS[tierId];
   race = newRace(tier, Boolean(battleStartAt));
+  setRoute(tier);
   document.body.classList.remove('frozen');
   setHud(tier);
 
   if (!engine) {
-    engine = new MotionEngine($('video'), $('overlay'));
+    engine = DEMO ? fakeEngine() : new MotionEngine($('video'), $('overlay'));
     center('Starting camera…');
     try {
       const cv = await engine.start();
@@ -299,7 +323,104 @@ function newRace(tier, battle) {
     boostUntil: 0, frozenUntil: 0, shrinkUntil: 0, immuneUntil: 0,
     charges: 0, sabosSent: 0, lastStation: 0,
     trace: [], ghost: loadGhost(tier.id),
+    lane: 0, items: buildItems(tier), stumbleUntil: 0, detourUntil: 0, gate: null,
   };
+}
+
+// ---------- interactive street items generated from the real path ----------
+function headingAt(t, d) {
+  const a = pointAt(t, Math.max(0, d));
+  const b = pointAt(t, Math.min(t.length, d + 10));
+  return Math.atan2((b.lng - a.lng) * Math.cos((a.lat * Math.PI) / 180), b.lat - a.lat);
+}
+function buildItems(t) {
+  const items = [];
+  let lastJ = -999;
+  for (let d = 20; d < t.length - 30; d += 5) {
+    let turn = headingAt(t, d) - headingAt(t, d - 10);
+    while (turn > Math.PI) turn -= 2 * Math.PI;
+    while (turn < -Math.PI) turn += 2 * Math.PI;
+    if (Math.abs(turn) > 0.7 && d - lastJ > 45) {
+      items.push({ kind: 'junction', dist: d, dir: Math.sign(turn), lane: 0 });
+      lastJ = d;
+    }
+  }
+  const peds = ['#c0563b', '#5d7fa3', '#7a8f6a', '#a66bff', '#2b3440', '#d48a2b'];
+  for (let d = 35; d < t.length - 40; d += 28 + Math.random() * 22) {
+    if (items.some((j) => j.kind === 'junction' && Math.abs(j.dist - d) < 14)) continue;
+    const r = Math.random();
+    const lane = [-1, 0, 1][Math.floor(Math.random() * 3)];
+    if (r < 0.55) items.push({ kind: 'ped', dist: d, lane, color: peds[Math.floor(Math.random() * peds.length)], phone: Math.random() < 0.5 });
+    else if (r < 0.8) items.push({ kind: 'kopi', dist: d, lane: lane || (Math.random() < 0.5 ? -1 : 1) });
+    else items.push({ kind: 'barrier', dist: d, lane: 0 });
+  }
+  items.push({ kind: 'gantry', dist: t.length - 12, lane: 0 });
+  return items.sort((a, b) => a.dist - b.dist);
+}
+function prompt(html, color) {
+  if (!html) return show('prompt', false);
+  $('prompt').innerHTML = html;
+  $('prompt').style.setProperty('--pc', color || '#2ee6a6');
+  show('prompt', true);
+}
+function updateItems(r, t, m, now, dt) {
+  const z = engine ? engine.zones : { top: 0, tap: 0 };
+  // lane follows which side you wave on
+  const targetLane = m > 12 ? Math.max(-1, Math.min(1, (engine?.lateral || 0) * 1.6)) : r.lane * 0.98;
+  r.lane += (targetLane - r.lane) * Math.min(1, dt * 3);
+  let factor = 1;
+  let shown = false;
+  for (const it of r.items) {
+    if (it.done) continue;
+    const ahead = it.dist - r.dist;
+    if (ahead > 30) break;
+    if (it.kind === 'junction') {
+      if (ahead < 28 && ahead > 0) {
+        if (Math.sign(r.lane) === it.dir && Math.abs(r.lane) > 0.35) it.ok = (it.ok || 0) + dt;
+        if (!shown) prompt(`${it.dir < 0 ? '⬅' : '➡'} Turn ${it.dir < 0 ? 'LEFT' : 'RIGHT'} · wave on your ${it.dir < 0 ? 'left' : 'right'}`, (it.ok || 0) > 0.4 ? '#2ee6a6' : '#ffd23f');
+        shown = true;
+      }
+      if (ahead <= 0) {
+        it.done = true;
+        if ((it.ok || 0) > 0.4) { toast('Nice turn!', '#2ee6a6'); sfx.combo(); }
+        else { r.detourUntil = now + 2600; toast('Wrong way! Doubling back…', '#ff3b6b'); sfx.alarm(); }
+      }
+    } else if (it.kind === 'barrier') {
+      if (ahead < 14 && ahead > 0) {
+        if (z.top > 30) it.jumped = true;
+        if (!shown) prompt(it.jumped ? '✔ Ready to jump' : '🙌 Barrier! Hands up to jump', it.jumped ? '#2ee6a6' : '#ffd23f');
+        shown = true;
+      }
+      if (ahead <= 0) {
+        it.done = true;
+        if (it.jumped) { toast('Hop! Cleared the barrier', '#2ee6a6'); sfx.clear(); }
+        else { r.stumbleUntil = now + 1400; toast('Tripped on the barrier!', '#ff3b6b'); sfx.alarm(); }
+      }
+    } else if (it.kind === 'ped' && ahead <= 0) {
+      it.done = true;
+      if (Math.abs(r.lane - it.lane) < 0.55) { r.stumbleUntil = now + 1200; toast('Bumped into someone on their phone!', '#ff3b6b'); sfx.alarm(); }
+      else sfx.combo();
+    } else if (it.kind === 'kopi' && ahead <= 0) {
+      it.done = true;
+      if (Math.abs(r.lane - it.lane) < 0.6) { r.boostUntil = now + 2500; toast('☕ Kopi boost!', '#ffd23f'); sfx.clear(); }
+    } else if (it.kind === 'gantry' && ahead <= 0) {
+      if (!r.gate) { r.gate = { t: 0, tap: 0 }; sfx.alarm(); }
+      r.gate.t += dt;
+      if (z.tap > 30) r.gate.tap += dt;
+      prompt('💳 Tap your EZ-Link · wave inside the yellow box', '#ffd23f');
+      shown = true;
+      factor = 0;
+      if (r.gate.tap > 0.5 || r.gate.t > 5) {
+        it.done = true;
+        toast(r.gate.tap > 0.5 ? 'Beep! Gantry open' : 'Gantry finally opened…', '#2ee6a6');
+        sfx.dingdong();
+      }
+    }
+  }
+  if (!shown) prompt(null);
+  if (now < r.stumbleUntil) factor *= 0.3;
+  if (now < r.detourUntil) factor *= 0.35;
+  return factor;
 }
 
 async function countdown(startAt) {
@@ -379,6 +500,7 @@ function update(dt, now) {
     else if (a.t > OB_TIMEOUT) endObstacle(false);
   }
 
+  speedFactor *= updateItems(r, t, m, now, dt);
   const frozen = now < r.frozenUntil;
   const boost = now < r.boostUntil ? 1.45 : 1;
   const target = frozen ? 0 : r.vmax * (m / 100) * r.mult * boost * speedFactor;
@@ -545,6 +667,7 @@ async function finish() {
   show('saboBar', false);
   show('dirBox', false);
   show('waveBox', false);
+  prompt(null);
   setRacing(false);
   show('obstacle', false);
   lobby?.send('finish', { id: myId, name: myName, color: myColor, tier: tierId, time_ms: ms });
@@ -586,6 +709,7 @@ async function missed() {
   show('saboBar', false);
   show('dirBox', false);
   show('waveBox', false);
+  prompt(null);
   setRacing(false);
   show('obstacle', false);
   lobby?.send('finish', { id: myId, name: myName, color: myColor, tier: tierId, time_ms: null, missed: true });
@@ -615,7 +739,12 @@ function render(now) {
   const ghostDist = ghost && phase === 'race' ? ghost.trace[Math.min(ghost.trace.length - 1, Math.floor(race.elapsed * 2))] : null;
   const racing = document.body.classList.contains('racing') && race;
   if (racing) {
-    drawStreet(sctx, innerWidth, innerHeight, tier, race.dist, { speed: race.v / race.vmax });
+    const useFP = fpAvailable();
+    if (document.body.classList.contains('fp') !== useFP) { document.body.classList.toggle('fp', useFP); resizeFP(); }
+    if (useFP) {
+      updateFP(tier, race.dist, race.lane, Math.sin(now / 110) * Math.min(1.2, race.v / race.vmax) * 0.8);
+      drawSprites(tier, race.dist, race.items, race.lane);
+    } else drawStreet(sctx, innerWidth, innerHeight, tier, race.dist, { speed: race.v / race.vmax });
     drawWave();
   }
   drawMap(ctx, canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight, tier, racing ? {
