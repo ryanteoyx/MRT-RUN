@@ -159,7 +159,7 @@ async function begin(battleStartAt) {
 }
 
 function newRace(tier, battle) {
-  const vmax = tier.length / (0.62 * tier.targetSec);
+  const vmax = tier.length / (0.8 * tier.targetSec); // tuned via sim: decent player ~51/85/139s
   return {
     tier, battle, vmax, dist: 0, v: 0, t0: 0, elapsed: 0,
     comboT: 0, lowT: 0, mult: 1,
@@ -200,7 +200,7 @@ function update(dt, now) {
   const r = race;
   const t = r.tier;
   r.elapsed = (now - r.t0) / 1000;
-  const m = engine ? engine.motion : 0;
+  const m = engine && Number.isFinite(engine.motion) ? Math.max(0, Math.min(100, engine.motion)) : 0;
   $('meterFill').style.width = `${m}%`;
 
   // shrink sabotage
@@ -251,7 +251,7 @@ function update(dt, now) {
 
   // ghost trace every 0.5 s
   const slot = Math.floor(r.elapsed * 2);
-  if (r.trace.length <= slot) r.trace.push(Math.round(r.dist));
+  while (r.trace.length <= slot) r.trace.push(Math.round(r.dist));
 
   // stations
   const ni = nextStationIndex(t, r.dist);
@@ -380,6 +380,7 @@ function broadcastTick() {
 async function finish() {
   phase = 'finish';
   const r = race;
+  if (engine) engine.shrink = null; // don't leak a sabotage shrink into the next calibration
   const ms = Math.round(r.elapsed * 1000);
   show('hud', false);
   show('saboBar', false);
