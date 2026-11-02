@@ -14,7 +14,6 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
-    "vite": "^5.4.0",
-    "@techstark/opencv-js": "4.10.0-release.1"
+    "vite": "^5.4.0"
   }
 }
