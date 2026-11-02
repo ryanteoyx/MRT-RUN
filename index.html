@@ -13,37 +13,55 @@
     <canvas id="map"></canvas>
 
     <!-- Join -->
-    <section id="join" class="panel-screen landing">
-      <div class="land">
-        <div class="land-hero">
+    <section id="join" class="panel-screen landing" data-step="start">
+      <!-- STEP 1: start -->
+      <div class="pane pane-start">
+        <div class="start-hero">
           <div class="land-logo">MRT<span>RUN</span></div>
-          <p class="land-tag">Your train just pulled in. <b>Run</b> to the next line before the doors close.</p>
-          <div class="how">
-            <div class="how-item"><span class="hi">🏃</span><b>Thrash</b><small>to run</small></div>
-            <div class="how-item"><span class="hi">🚦</span><b>Freeze</b><small>at the red man</small></div>
-            <div class="how-item"><span class="hi">🚪</span><b>Beat</b><small>the doors</small></div>
+          <p class="land-tag"><b>Wave to run.</b> Catch your connecting train.</p>
+          <div class="start-btns">
+            <button class="big-choice" data-go="solo"><span class="bc-ic">🏃</span><b>Solo run</b><small>Beat the doors</small></button>
+            <button class="big-choice alt" data-go="battle"><span class="bc-ic">⚔️</span><b>Battle</b><small>Race friends live</small></button>
           </div>
-          <p class="land-foot">Webcam motion by OpenCV · live leaderboard by Supabase Realtime</p>
+          <p class="land-foot">Motion tracking by OpenCV · live leaderboard by Supabase Realtime</p>
         </div>
+      </div>
 
-        <div class="land-panel">
-          <div class="step"><span class="num">1</span>Pick a mode</div>
-          <div class="modes">
-            <label class="mode"><input type="radio" name="mode" id="soloMode" checked /><span><b>Solo run</b><small>Play now, beat the leaderboard</small></span></label>
-            <label class="mode"><input type="radio" name="mode" id="battleReady" /><span><b>Battle</b><small>Wait for the big screen to start everyone</small></span></label>
-          </div>
-
-          <div class="step"><span class="num">2</span>Pick your transfer</div>
+      <!-- STEP 2: route (solo only) -->
+      <div class="pane pane-route">
+        <div class="sheet">
+          <button class="back" data-go="start">← Back</button>
+          <h2>Pick your transfer</h2>
+          <p class="sheet-sub">Real CBD walking routes. Tap one.</p>
           <div id="tiers" class="routes"></div>
+          
+        </div>
+      </div>
 
-          <div class="step"><span class="num">3</span>Who's running?</div>
-          <div class="who">
-            <input id="name" maxlength="16" placeholder="Your name" autocomplete="off" />
-            <div id="colors" class="colors"></div>
+      <!-- STEP 3: camera setup -->
+      <div class="pane pane-setup">
+        <div class="sheet wide">
+          <button class="back" id="setupBack">← Back</button>
+          <h2 id="setupTitle">Get ready</h2>
+          <div class="setup-grid">
+            <div class="cam-slot">
+              <div class="cam-ph" id="camPh"><span>📷</span>Allow camera access when your browser asks</div>
+            </div>
+            <div class="setup-steps">
+              <ol class="checks">
+                <li><b>Step back</b><small>Head to waist in frame</small></li>
+                <li><b>Face the light</b><small>No window behind you</small></li>
+                <li><b>Wave your arms</b><small>Green boxes = we see you</small></li>
+              </ol>
+              <div class="who">
+                <input id="name" maxlength="16" placeholder="Your name" autocomplete="off" />
+                <div id="colors" class="colors"></div>
+              </div>
+              <input type="checkbox" id="battleReady" hidden />
+              <button id="startBtn" class="btn-play">Tap in &amp; run <span>→</span></button>
+              <p id="joinMsg" class="hint"></p>
+            </div>
           </div>
-
-          <button id="startBtn" class="btn-play">Tap in &amp; run <span>→</span></button>
-          <p id="joinMsg" class="hint"></p>
         </div>
       </div>
     </section>
@@ -81,6 +99,24 @@
       <div class="sabo-target" id="saboTarget"></div>
     </div>
 
+    <!-- First-person: inside the MRT carriage -->
+    <div id="onboard" class="onboard hidden">
+      <div class="tunnel"><div class="tlights"></div></div>
+      <div class="carriage">
+        <div class="ceiling"><div class="stars" id="stars"></div></div>
+        <div class="windows"><div class="win"></div><div class="win"></div></div>
+        <div class="doors" id="doors">
+          <div class="door left"><div class="dwin"></div><div class="dsticker">Mind the gap</div></div>
+          <div class="door right"><div class="dwin"></div><div class="dsticker">Doors open this side</div></div>
+          <div class="door-light" id="doorLight"></div>
+        </div>
+        <div class="pole p1"></div><div class="pole p2"></div>
+        <div class="announce" id="announce"></div>
+      </div>
+    </div>
+
+    <!-- Direction arrow during the run -->
+    <div id="dirBox" class="dir-box hidden"><div class="dir-arrow" id="dirArrow">➤</div><div><small>Head to</small><b id="dirTo">—</b><span id="dirLeft"></span></div></div>
     <div id="toast" class="toast"></div>
     <div id="obstacle" class="obstacle hidden">
       <div class="ob-title" id="obTitle"></div>
@@ -99,7 +135,7 @@
         <div class="fin-board" id="finBoard"></div>
         <div class="fin-actions">
           <button class="btn-primary" id="againBtn">Run again</button>
-          <button class="btn-ghost" id="menuBtn">Change line</button>
+          <button class="btn-ghost" id="menuBtn">Change route</button>
         </div>
       </div>
     </section>

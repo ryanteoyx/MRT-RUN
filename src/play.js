@@ -1,9 +1,9 @@
 import confetti from 'canvas-confetti';
-import { TIERS, nextStationIndex } from './routes.js';
+import { TIERS, nextStationIndex, pointAt } from './routes.js';
 import { drawMap } from './map.js';
 import { MotionEngine } from './motion.js';
 import { joinLobby, saveRun, leaderboard, online } from './net.js';
-import { sfx, initAudio } from './sound.js';
+import { sfx, initAudio, rumble, doorChime, announce } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
 const COLORS = ['#ff3b6b', '#ffb020', '#2ee6a6', '#38b6ff', '#a66bff', '#ff7ad9', '#f4f6fa'];
@@ -18,9 +18,9 @@ let tierId = localStorage.getItem('mrtrun_tier') || 'easy';
 // ---------- config ----------
 const COMBO_ON = 40;
 const OBSTACLES = {
-  escalator: { title: 'BROKEN ESCALATOR', sub: 'THRASH HARD up the stairs!', need: 1.4, color: '#ffb020', test: (m) => m > 55, speed: 0 },
-  redman: { title: 'RED MAN!', sub: 'Traffic light: FREEZE, stand completely still', need: 1.5, color: '#ff3b6b', test: (m) => m < 10, speed: 0 },
-  crowd: { title: 'LUNCH CROWD', sub: 'Keep moving to squeeze through!', need: 2.2, color: '#38b6ff', test: (m) => m > 35, speed: 0.35 },
+  escalator: { title: 'BROKEN ESCALATOR', sub: 'Wave hard!', need: 1.4, color: '#ffb020', test: (m) => m > 55, speed: 0 },
+  redman: { title: 'RED MAN!', sub: 'Freeze!', need: 1.5, color: '#ff3b6b', test: (m) => m < 10, speed: 0 },
+  crowd: { title: 'LUNCH CROWD', sub: 'Keep waving', need: 2.2, color: '#38b6ff', test: (m) => m > 35, speed: 0.35 },
 };
 const OB_TIMEOUT = 6;
 
@@ -82,12 +82,63 @@ $('tiers').onclick = (e) => {
   if (!b) return;
   tierId = b.dataset.t;
   document.querySelectorAll('.route').forEach((x) => x.classList.toggle('on', x === b));
+  go('setup');
 };
 renderTiers();
 if (!online) $('joinMsg').textContent = 'Offline mode: leaderboard is saved on this browser only.';
 
+// ---------- step navigation ----------
+let mode = 'solo';
+function go(step) {
+  $('join').dataset.step = step;
+  if (step === 'setup') enterSetup();
+}
+$('join').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-go]');
+  if (!t) return;
+  const g = t.dataset.go;
+  if (g === 'solo' || g === 'battle') {
+    mode = g;
+    $('battleReady').checked = g === 'battle';
+    return go(g === 'solo' ? 'route' : 'setup');
+  }
+  go(g);
+});
+$('setupBack').onclick = () => go(mode === 'solo' ? 'route' : 'start');
+
+async function enterSetup() {
+  const solo = mode === 'solo';
+  const t = TIERS[tierId];
+  $('setupTitle').innerHTML = solo
+    ? `Get ready · <span style="color:${t.color}">${t.from.name} → ${t.to.name}</span>`
+    : 'Get ready · Battle';
+  $('startBtn').innerHTML = solo ? 'Tap in &amp; run <span>→</span>' : 'Join battle <span>→</span>';
+  $('joinMsg').textContent = '';
+  // start the camera now so players can frame themselves before the run
+  if (!engine) {
+    engine = new MotionEngine($('video'), $('overlay'));
+    try {
+      const cv = await engine.start();
+      $('engineTag').textContent = cv ? 'OpenCV.js' : 'Canvas fallback';
+      $('engineTag').classList.toggle('warn', !cv);
+    } catch (e) {
+      engine = null;
+      $('camPh').innerHTML = '<span>🚫</span>Camera blocked. Allow it in the address bar, then press Back and Next.';
+      return;
+    }
+  }
+  document.body.classList.add('setup');
+  document.querySelector('.cam-slot').appendChild($('camCard'));
+  $('camPh').style.display = 'none';
+  show('camCard', true);
+}
+
 $('startBtn').onclick = () => {
-  if (!$('battleReady').checked) return begin();
+  if (mode === 'solo') {
+    document.body.classList.remove('setup');
+    document.body.appendChild($('camCard'));
+    return begin();
+  }
   myName = $('name').value.trim().slice(0, 16);
   if (!myName) {
     $('joinMsg').textContent = 'Enter a name first.';
@@ -98,20 +149,27 @@ $('startBtn').onclick = () => {
   initAudio();
   connectLobby();
   lobby.track?.({ id: myId, name: myName, color: myColor, tier: tierId, ready: true });
-  $('startBtn').innerHTML = 'Ready · waiting for the big screen…';
-  $('joinMsg').textContent = 'Stay on this page. Your run starts when the host presses Start Battle.';
+  $('startBtn').innerHTML = '✓ Ready · waiting for the host';
+  $('startBtn').disabled = true;
+  $('joinMsg').textContent = 'Keep moving a little so the green boxes appear. The race starts automatically when the host presses Start Battle on the big screen.';
 };
-for (const id of ['soloMode', 'battleReady']) {
-  $(id).onchange = () => {
-    $('startBtn').innerHTML = $('battleReady').checked ? 'Join battle <span>→</span>' : 'Tap in &amp; run <span>→</span>';
-    $('joinMsg').textContent = '';
-  };
-}
-$('againBtn').onclick = () => begin();
+
+$('againBtn').onclick = () => {
+  show('finish', false);
+  if (mode === 'battle') {
+    show('join', true);
+    phase = 'join';
+    $('startBtn').disabled = false;
+    return go('setup');
+  }
+  begin();
+};
 $('menuBtn').onclick = () => {
   show('finish', false);
   show('join', true);
   phase = 'join';
+  $('startBtn').disabled = false;
+  go(mode === 'solo' ? 'route' : 'start');
   renderTiers();
 };
 
@@ -126,6 +184,9 @@ function connectLobby() {
       if (ev === 'sabo' && p.target === myId) receiveSabo(p);
       if (ev === 'battle' && $('battleReady').checked && (phase === 'join' || phase === 'finish')) {
         tierId = p.tier;
+        document.body.classList.remove('setup');
+        document.body.appendChild($('camCard'));
+        $('startBtn').disabled = false;
         begin(p.startAt);
       }
     },
@@ -177,17 +238,36 @@ async function beginInner(battleStartAt) {
       return;
     }
   }
+  // ---- first person: you are on the train ----
   phase = 'calibrate';
-  center('<b>Stand still</b><br><small>Calibrating your room</small>');
-  await engine.calibrate(2200);
+  center(null);
+  const fromBadge = tier.from.codes.map((c, i) => `<i class="lb" style="background:${tier.from.lines[i]?.color || tier.from.lines[0].color}">${c}</i>`).join('');
+  const toBadge = tier.to.codes.map((c, i) => `<i class="lb" style="background:${tier.to.lines[i]?.color || tier.to.lines[0].color}">${c}</i>`).join('');
+  $('stars').innerHTML = `<span class="s-now">${fromBadge} ${tier.from.name}</span><span class="s-walk">🚶 ${Math.round(tier.length)} m</span><span class="s-next">${toBadge} ${tier.to.name}</span>`;
+  $('doors').classList.remove('open');
+  $('doorLight').classList.remove('on');
+  show('onboard', true);
+  rumble(6);
+  const setMsg = (h) => ($('announce').innerHTML = h);
+  setMsg(`<small>Arriving</small><b>${tier.from.name}</b><span>Hold still…</span>`);
+  announce(`Next station, ${tier.from.name}. Transfer to the ${tier.to.lines.map((l) => l.name).join(' and ')} line at ${tier.to.name}. Your train leaves in ${tier.limitSec} seconds.`);
+  await engine.calibrate(2600);
+  setMsg(`<small>Doors opening</small><b>Wave to run</b><span>${tier.to.name} · ${tier.limitSec}s</span>`);
 
   phase = 'countdown';
-  const startAt = battleStartAt || Date.now() + 3000;
-  if (battleStartAt) center('<b>BATTLE</b><br><small>Get ready</small>');
-  await countdown(startAt);
+  const startAt = battleStartAt || Date.now() + 3500;
+  while (Date.now() < startAt - 1200) await sleep(100);
+  $('doorLight').classList.add('on');
+  doorChime();
+  await sleep(1200);
+  $('doors').classList.add('open');
+  setMsg('<b class="go">GO!</b>');
+  await sleep(700);
+  show('onboard', false);
   center(null);
   show('hud', true);
-  show('saboBar', true);
+  show('dirBox', true);
+  show('saboBar', mode === 'battle');
   race.t0 = performance.now();
   phase = 'race';
   sfx.horn();
@@ -302,6 +382,15 @@ function update(dt, now) {
   }
 
   // HUD
+  // direction arrow (north-up): from where you are to a point 40 m ahead on the path
+  {
+    const p0 = pointAt(t, r.dist);
+    const p1 = pointAt(t, Math.min(t.length, r.dist + 40));
+    const ang = Math.atan2(-(p1.lat - p0.lat), (p1.lng - p0.lng) * Math.cos(p0.lat * Math.PI / 180));
+    $('dirArrow').style.transform = `rotate(${ang}rad)`;
+    $('dirTo').textContent = t.to.name;
+    $('dirLeft').textContent = `${Math.max(0, Math.round(t.length - r.dist))} m`;
+  }
   const left = t.limitSec - r.elapsed;
   $('timer').textContent = fmt(Math.max(0, left) * 1000);
   $('timer').classList.toggle('warn', left < 20 && left >= 10);
@@ -425,6 +514,7 @@ async function finish() {
   const ms = Math.round(r.elapsed * 1000);
   show('hud', false);
   show('saboBar', false);
+  show('dirBox', false);
   show('obstacle', false);
   lobby?.send('finish', { id: myId, name: myName, color: myColor, tier: tierId, time_ms: ms });
   sfx.horn();
@@ -463,6 +553,7 @@ async function missed() {
   if (engine) engine.shrink = null;
   show('hud', false);
   show('saboBar', false);
+  show('dirBox', false);
   show('obstacle', false);
   lobby?.send('finish', { id: myId, name: myName, color: myColor, tier: tierId, time_ms: null, missed: true });
   sfx.alarm();
