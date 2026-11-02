@@ -54,6 +54,11 @@ function celebrate(t, row) {
 // ---------- lobby ----------
 const lobby = joinLobby({
   presence: null,
+  onPresence: (state) => {
+    const ready = Object.values(state).flat().filter((m) => m.ready);
+    $('readyCount').textContent = ready.length ? `${ready.length} ready` : 'No one ready';
+    $('readyNames').innerHTML = ready.map((m) => `<i style="background:${m.color}" title="${esc(m.name)}"></i>`).join('');
+  },
   onEvent: (ev, p) => {
     if (ev === 'tick') live.set(p.id, { ...p, at: performance.now() });
     if (ev === 'finish') {

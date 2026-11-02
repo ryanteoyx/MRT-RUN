@@ -398,3 +398,6 @@ body.screen { background: var(--bg); }
 .hud-right .stat:first-child { display: none; }
 .hud .hud-label { display: none; }
 .cam-card:not(.cam-slot .cam-card) { width: 220px; opacity: 0.92; }
+.ready { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aab6c6; }
+.ready-dots { display: flex; gap: 3px; }
+.ready-dots i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
