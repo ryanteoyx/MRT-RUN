@@ -1,0 +1,20 @@
+{
+  "name": "thrash-royale",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "canvas-confetti": "^1.9.3",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "@techstark/opencv-js": "4.10.0-release.1"
+  }
+}

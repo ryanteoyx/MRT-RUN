@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thrash Royale · MRT Sprint</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Archivo+Black&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body class="play">
+    <canvas id="map"></canvas>
+
+    <!-- Join -->
+    <section id="join" class="panel-screen">
+      <div class="join-card">
+        <div class="brand"><span class="logo">THRASH ROYALE</span><span class="sub">MRT Sprint · powered by OpenCV + Supabase Realtime</span></div>
+        <p class="lede">Thrash in front of your webcam to drive the train. Clear the obstacles. Beat the clock.</p>
+        <label class="field">Your name<input id="name" maxlength="16" placeholder="e.g. Ryan" autocomplete="off" /></label>
+        <div class="field">Colour<div id="colors" class="colors"></div></div>
+        <div class="field">Pick your line<div id="tiers" class="tiers"></div></div>
+        <label class="battle-toggle"><input type="checkbox" id="battleReady" /> Join battles started from the big screen</label>
+        <button id="startBtn" class="btn-primary">Start run</button>
+        <p id="joinMsg" class="hint"></p>
+      </div>
+    </section>
+
+    <!-- Camera preview -->
+    <div id="camCard" class="cam-card hidden">
+      <video id="video" playsinline muted></video>
+      <canvas id="overlay" width="320" height="240"></canvas>
+      <div class="cam-meta"><span id="engineTag" class="tag">OpenCV</span><div class="meter"><div id="meterFill"></div></div></div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="hud hidden">
+      <div class="hud-left">
+        <div class="line-badge" id="lineBadge">NS</div>
+        <div>
+          <div class="hud-label">Next station</div>
+          <div class="hud-next" id="nextStation">—</div>
+        </div>
+      </div>
+      <div class="hud-center">
+        <div class="timer" id="timer">0:00.0</div>
+        <div class="progress"><div id="progressFill"></div></div>
+      </div>
+      <div class="hud-right">
+        <div class="stat"><span id="speed">0</span><small>km/h</small></div>
+        <div class="stat combo" id="comboBox"><span id="combo">x1</span><small>combo</small></div>
+      </div>
+    </div>
+
+    <div id="saboBar" class="sabo-bar hidden">
+      <div class="charges" id="charges"></div>
+      <button class="sabo" id="saboFreeze" data-type="freeze"><b>1</b> Freeze <small>stop them 3s</small></button>
+      <button class="sabo" id="saboShrink" data-type="shrink"><b>2</b> Shrink <small>tiny camera zone 5s</small></button>
+      <div class="sabo-target" id="saboTarget"></div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <div id="obstacle" class="obstacle hidden">
+      <div class="ob-title" id="obTitle"></div>
+      <div class="ob-sub" id="obSub"></div>
+      <div class="ob-bar"><div id="obFill"></div></div>
+    </div>
+    <div id="center" class="center-msg hidden"></div>
+
+    <!-- Finish -->
+    <section id="finish" class="panel-screen hidden">
+      <div class="join-card finish-card">
+        <div class="fin-label">Arrived at</div>
+        <div class="fin-station" id="finStation"></div>
+        <div class="fin-time" id="finTime"></div>
+        <div class="fin-meta" id="finMeta"></div>
+        <div class="fin-board" id="finBoard"></div>
+        <div class="fin-actions">
+          <button class="btn-primary" id="againBtn">Run again</button>
+          <button class="btn-ghost" id="menuBtn">Change line</button>
+        </div>
+      </div>
+    </section>
+
+    <script type="module" src="/src/play.js"></script>
+  </body>
+</html>

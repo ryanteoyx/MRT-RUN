@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thrash Royale · Big Screen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Archivo+Black&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body class="screen">
+    <header class="scr-head">
+      <div class="brand"><span class="logo">THRASH ROYALE</span><span class="sub">MRT Sprint · live leaderboard</span></div>
+      <div class="scr-controls">
+        <div class="seg" id="rangeSeg"><button data-r="all" class="on">All-time</button><button data-r="today">Today</button></div>
+        <select id="battleTier"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+        <button class="btn-primary small" id="battleBtn">Start Battle</button>
+        <span class="live-dot" id="liveDot">LIVE</span>
+      </div>
+    </header>
+    <main class="scr-grid">
+      <section class="scr-map-wrap">
+        <canvas id="scrMap"></canvas>
+        <div class="scr-map-label" id="mapLabel"></div>
+        <div class="now-playing">
+          <div class="np-title">Now playing <span id="npCount"></span></div>
+          <div id="npList"></div>
+        </div>
+      </section>
+      <aside class="scr-side">
+        <div class="boards" id="boards"></div>
+        <div class="qr-box">
+          <canvas id="qr"></canvas>
+          <div><b>Play on your laptop</b><span id="playUrl"></span></div>
+        </div>
+      </aside>
+    </main>
+    <div id="feed" class="feed"></div>
+    <div id="banner" class="banner hidden"></div>
+    <script type="module" src="/src/screen.js"></script>
+  </body>
+</html>
